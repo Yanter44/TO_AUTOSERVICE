@@ -23,7 +23,6 @@ namespace ToMainApi.Models.Dtos.Agent
 
         //VehiclePhotos
         public List<VehiclePhoto> VehiclePhotos { get; set; }
-
         //PTO
         public int PtoId { get; set; }
         

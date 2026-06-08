@@ -47,12 +47,15 @@ namespace ToMainApi.Services
         {
             var claims = new List<Claim>
             {
+               new Claim(ClaimTypes.NameIdentifier, usermodel.Id.ToString()),
                new Claim(ClaimTypes.Email, usermodel.Email),
                new Claim(ClaimTypes.Role, usermodel.RoleType)
             };
+
             var secretkey = _configuration["Jwt:Key"];
             var secretissuer = _configuration["Jwt:Issuer"];
             var secretaudience = _configuration["Jwt:Audience"];
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretkey));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

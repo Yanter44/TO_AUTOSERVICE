@@ -5,8 +5,9 @@ namespace ToMainApi.Interfaces
 {
     public interface IPromptService
     {
-        Task<ServiceResponse<bool>> AddNewPromptAsync(AddNewPromptDto model);
-        Task<ServiceResponse<bool>> DeletePromptAsync(DeletePromptDto model);
-        Task<ServiceResponse<bool>> UpdatePromptAsync(UpdatePromptDto model);
+        Task<ServiceResponse<List<PromtDtoRequest>>> GetAllPrompts(int UserId);
+        Task<ServiceResponse<bool>> AddNewPromptAsync(int UserId, AddNewPromptDto model);
+        Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, DeletePromptDto model);
+        Task<ServiceResponse<bool>> UpdatePromptAsync(int UserId, UpdatePromptDto model);
     }
 }

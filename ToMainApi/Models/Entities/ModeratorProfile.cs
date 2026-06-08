@@ -1,6 +1,6 @@
 ﻿namespace ToMainApi.Models.Entities
 {
-    public class Moderator
+    public class ModeratorProfile
     {
         public int Id { get; set; }
         public int UserId { get; set; }

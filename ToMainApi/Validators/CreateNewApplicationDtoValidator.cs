@@ -9,10 +9,6 @@ namespace ToMainApi.Validators
         public CreateNewApplicationDtoValidator()
         {
 
-            RuleFor(x => x.VehicleCategoryType)
-                .IsInEnum()
-                .WithMessage("Invalid vehicle category");
-
             RuleFor(x => x.VIN)
                 .NotEmpty()
                 .Length(17)

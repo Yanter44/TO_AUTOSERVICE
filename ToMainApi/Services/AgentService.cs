@@ -31,7 +31,9 @@ namespace ToMainApi.Services
                 PhoneNumber = model.PhoneNumber,
                 PtoId = model.PtoId,
                 Documents = new List<ApplicationDocument>(),
-                Photos = new List<ApplicationPhoto>()
+                Photos = new List<ApplicationPhoto>(),
+                Status = Models.Enums.ApplicationStatus.Moderated,
+                CreatedAt = DateTime.UtcNow
             };
 
             foreach (var document in model.DocumentFiles)

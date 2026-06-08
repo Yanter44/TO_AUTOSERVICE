@@ -1,0 +1,19 @@
+﻿namespace ToMainApi.Models.Dtos
+{
+    public class AddNewPtoDto
+    {
+        //LegalInfo
+        public string Name { get; set; }
+        public string RsaNumber { get; set; }
+        public string Address { get; set; }
+        //Geolocation
+        public string Latitude { get; set; }
+        public string Longitude { get; set; }
+
+        //IntergrationWithEAI
+        public string Login { get; set; }
+        public string Password { get; set; }
+        public string ApiKey { get; set; }
+
+    }
+}

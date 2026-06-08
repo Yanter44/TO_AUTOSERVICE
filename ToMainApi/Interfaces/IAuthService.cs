@@ -1,5 +1,5 @@
 ﻿using ToMainApi.Common;
-using ToMainApi.Models.Dtos;
+using ToMainApi.Models.Dtos.Auth;
 using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Interfaces

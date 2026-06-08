@@ -1,4 +1,6 @@
-﻿namespace ToMainApi.Models.Entities
+﻿using ToMainApi.Models.Enums;
+
+namespace ToMainApi.Models.Entities
 {
     public class Application
     {
@@ -27,5 +29,8 @@
         // PTO
         public int PtoId { get; set; }
         public Pto Pto { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+        public ApplicationStatus Status { get; set; }
     }
 }
