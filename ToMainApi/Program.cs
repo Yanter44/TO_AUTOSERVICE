@@ -113,6 +113,7 @@ builder.Services.AddTransient<IAgentService, AgentService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddTransient<IModeratorService, ModeratorService>();
 builder.Services.AddTransient<IPromptService, PromptService>();
+builder.Services.AddTransient<IPtoService, PtoService>();
 var app = builder.Build();
 
 app.UseCors("AllowLocalhost8000");

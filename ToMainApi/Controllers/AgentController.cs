@@ -14,6 +14,7 @@ namespace ToMainApi.Controllers
         {
             _agentService = agentService;
         }
+
        [Authorize(Roles = "Agent")]
        [HttpGet("GetAgentBalance")]
        private async Task<IActionResult> GetMyData()

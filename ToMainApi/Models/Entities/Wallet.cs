@@ -7,7 +7,7 @@ namespace ToMainApi.Models.Entities
         public int Id { get; set; }
 
         public int AgentId { get; set; }
-        public Agent Agent { get; set; }
+        public AgentProfile Agent { get; set; }
 
         public decimal Balance { get; set; }
 

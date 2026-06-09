@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
 using System.Security.Claims;
 using ToMainApi.Interfaces;
-using ToMainApi.Models.Dtos;
+using ToMainApi.Models.Dtos.Prompt;
 using ToMainApi.Models.Enums;
 using ToMainApi.Services;
 

@@ -2,7 +2,7 @@
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
-using ToMainApi.Models.Dtos;
+using ToMainApi.Models.Dtos.Prompt;
 using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Services

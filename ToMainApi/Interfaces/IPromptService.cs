@@ -1,5 +1,5 @@
 ﻿using ToMainApi.Common;
-using ToMainApi.Models.Dtos;
+using ToMainApi.Models.Dtos.Prompt;
 
 namespace ToMainApi.Interfaces
 {

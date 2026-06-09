@@ -1,4 +1,4 @@
-﻿namespace ToMainApi.Models.Dtos
+﻿namespace ToMainApi.Models.Dtos.Prompt
 {
     public class UpdatePromptDto
     {
