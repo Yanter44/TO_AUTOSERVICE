@@ -18,7 +18,7 @@ namespace ToMainApi.Configurations
             builder.Property(x => x.CreatedAt)
                 .IsRequired();
 
-            builder.Property(x => x.Type)
+            builder.Property(x => x.TransactionType)
                 .IsRequired();
 
             builder.Property(x => x.Description)
@@ -32,6 +32,8 @@ namespace ToMainApi.Configurations
             builder.HasIndex(x => x.WalletId);
 
             builder.HasIndex(x => x.CreatedAt);
+
+            builder.HasIndex(x => x.IdempotencyKey).IsUnique();
         }
     }
 }

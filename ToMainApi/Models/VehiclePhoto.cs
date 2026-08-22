@@ -4,7 +4,7 @@ namespace ToMainApi.Models
 {
     public class VehiclePhoto
     {
-        public VehiclePhotoType VehiclePhotoType { get; set; }
+        public string VehiclePhotoType { get; set; }
         public IFormFile Photo { get; set; }
     }
 }

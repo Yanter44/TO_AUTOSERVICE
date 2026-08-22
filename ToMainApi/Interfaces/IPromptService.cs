@@ -5,9 +5,11 @@ namespace ToMainApi.Interfaces
 {
     public interface IPromptService
     {
-        Task<ServiceResponse<List<PromtDtoRequest>>> GetAllPrompts(int UserId);
-        Task<ServiceResponse<bool>> AddNewPromptAsync(int UserId, AddNewPromptDto model);
-        Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, DeletePromptDto model);
-        Task<ServiceResponse<bool>> UpdatePromptAsync(int UserId, UpdatePromptDto model);
+        Task<ServiceResponse<List<PromptDto>>> GetAllPrompts(int UserId);
+        Task<ServiceResponse<PromptDto>> AddNewPromptAsync(int UserId, AddNewPromptDto model);
+        Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, int promptId);
+        Task<ServiceResponse<PromptDto>> UpdatePromptAsync(int UserId, UpdatePromptDto model);
+        Task<ServiceResponse<string>> GetPromptByUserId(int userId, int promptId);
+        Task<ServiceResponse<List<string>>> GetPromptsByUserIdAndIds(int userId, List<int> promptsIds);
     }
 }

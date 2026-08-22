@@ -2,8 +2,8 @@
 {
     public enum TransactionType
     {
-        Deposit,   // пополнение
-        Withdraw,  // списание
-        Refund,    // возврат
+        Credit,   // пополнение
+        Debit,    // списание
+        Refund,   // возврат
     }
 }

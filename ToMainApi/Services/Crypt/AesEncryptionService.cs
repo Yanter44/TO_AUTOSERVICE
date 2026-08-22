@@ -2,7 +2,7 @@
 using System.Text;
 using ToMainApi.Interfaces;
 
-namespace ToMainApi.Services
+namespace ToMainApi.Services.Crypt
 {
     public class AesEncryptionService : IEncryptService
     {
@@ -31,7 +31,6 @@ namespace ToMainApi.Services
             {
                 sw.Write(plainText);
             }
-
             return Convert.ToBase64String(ms.ToArray());
         }
 

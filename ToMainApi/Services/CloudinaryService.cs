@@ -11,8 +11,9 @@ namespace ToMainApi.Services
     public class CloudinaryService : ICloudinaryService
     {
         private Cloudinary _cloudinary;
+        private readonly HttpClient _httpclient;
         private readonly IConfiguration _configuration;
-        public CloudinaryService(IConfiguration configuration)
+        public CloudinaryService(IConfiguration configuration, HttpClient httpclient)
         {
             _configuration = configuration;
 
@@ -22,6 +23,7 @@ namespace ToMainApi.Services
                 _configuration["CloudinaryService:ApiSecret"]
             );
             _cloudinary = new Cloudinary(account);
+            _httpclient = httpclient;
         }
         public async Task<string> UploadFileAsync(IFormFile file)
         {
@@ -45,6 +47,19 @@ namespace ToMainApi.Services
             }
 
             throw new Exception("Ошибка загрузки документа");
+        }
+        public async Task<MemoryStream> DownloadPhotoAsStreamAsync(string photoUrl)
+        {
+            var response = await _httpclient.GetAsync(photoUrl);
+            response.EnsureSuccessStatusCode();
+
+            var stream = new MemoryStream();
+
+            await response.Content.CopyToAsync(stream);
+
+            stream.Position = 0;
+
+            return stream;
         }
         public async Task<string> UploadImageAsync(IFormFile file)
         {

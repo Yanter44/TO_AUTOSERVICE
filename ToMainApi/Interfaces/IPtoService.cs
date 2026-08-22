@@ -8,7 +8,7 @@ namespace ToMainApi.Interfaces
     {
         Task<ServiceResponse<List<PtoResponseDto>>> GetAllPtos();
         Task<ServiceResponse<bool>> AddNewPto(AddNewPtoDto model);
-        Task<ServiceResponse<bool>> DeletePto(DeletePtoRequestDto model);
+        Task<ServiceResponse<bool>> DeletePto(int ptoId);
         Task<ServiceResponse<bool>> UpdatePto(UpdatePtoRequestDto model);
     }
 }

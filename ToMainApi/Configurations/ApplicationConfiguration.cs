@@ -73,6 +73,8 @@ namespace ToMainApi.Configurations
             builder.HasIndex(x => x.Email);
 
             builder.HasIndex(x => x.GosNumber);
+
+            builder.Property(x => x.RejectReason).HasMaxLength(500);
         }
     }
 }

@@ -6,6 +6,10 @@ namespace ToMainApi.Models.Entities
     {
         public int Id { get; set; }
 
+        //AgentData
+        public int AgentId { get; set; }
+        public AgentProfile Agent { get; set; }
+
         // VehicleData
         public int VehicleCategoryId { get; set; }
         public VehicleCategory VehicleCategory { get; set; }
@@ -31,6 +35,7 @@ namespace ToMainApi.Models.Entities
         public Pto Pto { get; set; }
 
         public DateTime CreatedAt { get; set; }
-        public ApplicationStatus Status { get; set; }
+        public string Status { get; set; }
+        public string? RejectReason { get; set; }
     }
 }

@@ -11,19 +11,20 @@ namespace ToMainApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class PromtController : ControllerBase
+    public class PromptController : ControllerBase
     {
         private readonly IPromptService _promtService;
         private readonly IModeratorService _moderatorService;
-        public PromtController(IPromptService promptService, 
+        public PromptController(IPromptService promptService, 
                                IModeratorService moderatorService)
         {
             _promtService = promptService;
             _moderatorService = moderatorService;
         }
+
         [Authorize(Roles = "Admin,Moderator")]
-        [HttpGet("GetAllPromts")]
-        public async Task<IActionResult> GetAllPromts()
+        [HttpGet("GetAllPrompts")]
+        public async Task<IActionResult> GetAllPrompts()
         {
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _promtService.GetAllPrompts(userid);
@@ -33,8 +34,8 @@ namespace ToMainApi.Controllers
         }
 
         [Authorize(Roles = "Admin,Moderator")]
-        [HttpPost("AddNewPromt")]
-        public async Task<IActionResult> AddNewPromt([FromBody] AddNewPromptDto model)
+        [HttpPost("AddNewPrompt")]
+        public async Task<IActionResult> AddNewPrompt([FromBody] AddNewPromptDto model)
         {
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _promtService.AddNewPromptAsync(userid, model);
@@ -43,19 +44,17 @@ namespace ToMainApi.Controllers
 
             return BadRequest(result.Message);
         }
-
         [Authorize(Roles = "Admin,Moderator")]
         [HttpDelete("DeletePrompt")]
-        public async Task<IActionResult> DeletePrompt([FromBody] DeletePromptDto model)
+        public async Task<IActionResult> DeletePrompt([FromQuery] int promptId)
         {
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _promtService.DeletePromptAsync(userid, model);
+            var result = await _promtService.DeletePromptAsync(userid, promptId);
             if (result.Success)
                 return Ok(result.Data);
 
             return BadRequest(result.Message);
         }
-
         [Authorize(Roles = "Admin,Moderator")]
         [HttpPut("UpdatePrompt")]
         public async Task<IActionResult> UpdatePrompt([FromBody] UpdatePromptDto model)

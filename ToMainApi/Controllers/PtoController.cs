@@ -16,7 +16,7 @@ namespace ToMainApi.Controllers
             _ptoservice = ptoservice;
         }
 
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize]
         [HttpGet("GetAllPtos")]
         public async Task<IActionResult> GetAllPtos()
         {
@@ -25,6 +25,7 @@ namespace ToMainApi.Controllers
                 return Ok(result.Data);
             return BadRequest(result.Message);
         }
+
         [Authorize(Roles ="Admin,Moderator")]
         [HttpPost("AddNewPto")]
         public async Task<IActionResult> AddNewPto([FromBody] AddNewPtoDto model)
@@ -34,11 +35,12 @@ namespace ToMainApi.Controllers
                 return Ok();
             return BadRequest(result.Message);
         }
+
         [Authorize(Roles = "Admin,Moderator")]
         [HttpDelete("DeletePto")]
-        public async Task<IActionResult> DeletePto([FromBody] DeletePtoRequestDto model)
+        public async Task<IActionResult> DeletePto([FromQuery] int ptoId)
         {
-            var result = await _ptoservice.DeletePto(model);
+            var result = await _ptoservice.DeletePto(ptoId);
             if (result.Success)
                 return Ok();
             return BadRequest(result.Message);

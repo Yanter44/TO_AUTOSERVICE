@@ -4,6 +4,6 @@
     {
         public int PromptId { get; set; }
         public string Tag { get; set; }
-        public string Descripion { get; set; }
+        public string Description { get; set; }
     }
 }

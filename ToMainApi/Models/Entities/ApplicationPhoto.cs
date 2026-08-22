@@ -9,7 +9,7 @@ namespace ToMainApi.Models.Entities
         public int ApplicationId { get; set; }
         public Application Application { get; set; }
 
-        public VehiclePhotoType VehiclePhotoType { get; set; }
+        public string VehiclePhotoType { get; set; }
 
         public string Url { get; set; }   
     }

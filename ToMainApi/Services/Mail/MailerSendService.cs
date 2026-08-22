@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using ToMainApi.Interfaces;
 
-namespace ToMainApi.Services
+namespace ToMainApi.Services.Mail
 {
     public class MailerSendService : IEmailService
     {
@@ -19,7 +19,6 @@ namespace ToMainApi.Services
             var apiKey = _configuration["MailerSend:ApiKey"];
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         }
-
         public async Task SendEmailAsync(string toEmail, string subject, string plainText, string htmlContent)
         {
             var payload = new

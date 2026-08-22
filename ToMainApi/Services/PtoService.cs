@@ -18,6 +18,7 @@ namespace ToMainApi.Services
         public async Task<ServiceResponse<List<PtoResponseDto>>> GetAllPtos()
         {
             var ptos = await _dbcontext.Ptos
+                .AsNoTracking()
                 .Include(x => x.PricePolicies)
                 .ToListAsync();
 
@@ -66,9 +67,9 @@ namespace ToMainApi.Services
             await _dbcontext.SaveChangesAsync();
             return new ServiceResponse<bool>() { Success = true };
         }
-        public async Task<ServiceResponse<bool>> DeletePto(DeletePtoRequestDto model)
+        public async Task<ServiceResponse<bool>> DeletePto(int ptoId)
         {
-            var existpto = await _dbcontext.Ptos.FirstOrDefaultAsync(x => x.Id == model.Id);
+            var existpto = await _dbcontext.Ptos.FirstOrDefaultAsync(x => x.Id == ptoId);
             if(existpto != null)
             {
                 _dbcontext.Remove(existpto);

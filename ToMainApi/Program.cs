@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -10,6 +11,11 @@ using System.Text;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Services;
+using ToMainApi.Services.AI;
+using ToMainApi.Services.BackgorundServices;
+using ToMainApi.Services.Crypt;
+using ToMainApi.Services.Mail;
+using ToMainApi.Services.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,16 +91,35 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-builder.Services.AddCors(options =>
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowLocalhost8000",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:8000")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod()
+//                  .AllowCredentials();
+//        });
+//});
+builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
-    options.AddPolicy("AllowLocalhost8000",
-        policy =>
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        foreach (var kv in context.ModelState)
         {
-            policy.WithOrigins("http://localhost:8000")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
+            Console.WriteLine($"Поле: {kv.Key}");
+
+            foreach (var error in kv.Value.Errors)
+            {
+                Console.WriteLine($"Ошибка: {error.ErrorMessage}");
+
+                if (error.Exception != null)
+                    Console.WriteLine(error.Exception);
+            }
+        }
+        return new BadRequestObjectResult(context.ModelState);
+    };
 });
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -110,14 +135,44 @@ builder.Services.AddHttpClient<IEmailService, MailerSendService>();
 builder.Services.AddTransient<IEncryptService, AesEncryptionService>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 builder.Services.AddTransient<IAgentService, AgentService>();
-builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddTransient<IAdminService, AdminService>();
+builder.Services.AddHttpClient<ICloudinaryService, CloudinaryService>();
 builder.Services.AddTransient<IModeratorService, ModeratorService>();
 builder.Services.AddTransient<IPromptService, PromptService>();
 builder.Services.AddTransient<IPtoService, PtoService>();
+builder.Services.AddTransient<IApplicationService, ApplicationService>();
+builder.Services.AddTransient<IVehicleService, VehicleService>();
+builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddTransient<IPhotoUploadRequirementService, PhotoUploadRequirementService>();
+builder.Services.AddTransient<IDocumentUploadRequirementService, DocumentUploadRequirementService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<INotificationSender, NotificationSender>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+builder.Services.AddHttpClient<INeuronNetworkStrategy,NanoBananaAiProvider>();
+builder.Services.AddHttpClient<INeuronNetworkStrategy,ReveAiProvider>();
+builder.Services.AddScoped<NeuronNetworkDispatcher>();
+builder.Services.AddTransient<IimageMetadataEditor, ImageMetadataEditorService>();
+builder.Services.AddTransient<ICoordinateFormatConverterService, CoordinateFormatConverter>();
+builder.Services.AddTransient<IimageTextOverlayService, ImageTextOverlayService>();
+builder.Services.AddTransient<IApplicationPhotoService, ApplicationPhotoService>();
+builder.Services.AddTransient<IImageValidator, ImageValidator>();
+builder.Services.AddHostedService<RefreshTokenCleanupService>();
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+builder.Services.AddSignalR();
+
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command",LogLevel.None);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB
+});
 var app = builder.Build();
 
-app.UseCors("AllowLocalhost8000");
-//app.UseHttpsRedirection();
+await DbInitializer.SeedAdminAsync(app);
+await DbInitializer.SeedVehicleCategories(app);
+//app.UseCors("AllowLocalhost8000");
+
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -6,6 +6,7 @@ namespace ToMainApi.DbContext
     public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<AgentProfile> AgentProfiles { get; set; }
         public DbSet<ModeratorProfile> ModeratorProfiles { get; set; }
         public DbSet<AdminProfile> AdminProfiles { get; set; }
@@ -18,7 +19,9 @@ namespace ToMainApi.DbContext
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Prompt> Prompts { get; set; }
-
+        public DbSet<PhotoUploadRequire> PhotoUploadRequires { get; set; }
+        public DbSet<DocumentUploadRequire> DocumentUploadRequires { get; set; }
+        public DbSet<Notification> Notifications { get; set; } 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }

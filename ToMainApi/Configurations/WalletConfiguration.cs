@@ -16,6 +16,10 @@ namespace ToMainApi.Configurations
                 .IsRequired()
                 .HasPrecision(18, 2);
 
+            builder.Property(x => x.DebtLimit)
+                .IsRequired()
+                .HasPrecision(18, 2);
+
             builder.HasOne(x => x.Agent)
                 .WithOne(x => x.Wallet)
                 .HasForeignKey<Wallet>(x => x.AgentId)

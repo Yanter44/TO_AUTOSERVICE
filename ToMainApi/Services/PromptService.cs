@@ -14,24 +14,64 @@ namespace ToMainApi.Services
         {
             _dbcontext = dbcontext;
         }
-
-        public async Task<ServiceResponse<List<PromtDtoRequest>>> GetAllPrompts(int UserId)
+        public async Task<ServiceResponse<List<PromptDto>>> GetAllPrompts(int UserId)
         {
-            var prompts = await _dbcontext.Prompts.Where(x => x.UserId == UserId)
-                                                  .Select(x => new PromtDtoRequest
-                                                  {
-                                                      Tag = x.Tag,
-                                                      Description = x.Description
-                                                  })
-                                                 .ToListAsync();
-            return new ServiceResponse<List<PromtDtoRequest>>
+           var prompts = await _dbcontext.Prompts.AsNoTracking()
+                .Where(x => x.UserId == UserId)
+                .Select(x => new PromptDto
+                {
+                   PromptId = x.Id,
+                   Tag = x.Tag,
+                   Description = x.Description
+                })
+                .ToListAsync();
+            return new ServiceResponse<List<PromptDto>>
             {
                 Data = prompts,
                 Success = true
             };
         }
+        public async Task<ServiceResponse<List<string>>> GetPromptsByUserIdAndIds(int userId,List<int> promptsIds)
+        {
+            var prompts = await _dbcontext.Prompts
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Where(p => promptsIds.Contains(p.Id))
+                .Select(p => p.Description)
+                .ToListAsync();
 
-        public async Task<ServiceResponse<bool>> AddNewPromptAsync(int UserId, AddNewPromptDto model)
+            return new ServiceResponse<List<string>>()
+            {
+                Data = prompts,
+                Success = true
+            };
+        }
+        public async Task<ServiceResponse<string>> GetPromptByUserId(int userId, int promptId)
+        {
+            var prompt = await _dbcontext.Prompts
+                .AsNoTracking()
+                .Where(p => p.Id == promptId)
+                .Where(p => p.UserId == userId)
+                .Select(p => p.Description)
+                .FirstOrDefaultAsync();
+
+            if (prompt == null)
+            {
+                return new ServiceResponse<string>
+                {
+                    Success = false,
+                    Data = null,
+                    Message = "Промпт не найден"
+                };
+            }
+
+            return new ServiceResponse<string>
+            {
+                Success = true,
+                Data = prompt
+            };
+        }
+        public async Task<ServiceResponse<PromptDto>> AddNewPromptAsync(int UserId, AddNewPromptDto model)
         {
             var entity = new Prompt
             {
@@ -43,16 +83,24 @@ namespace ToMainApi.Services
             await _dbcontext.Prompts.AddAsync(entity);
             await _dbcontext.SaveChangesAsync();
 
-            return new ServiceResponse<bool>
+            var dto = new PromptDto
             {
-                Data = true,
-                Success = true
+                PromptId = entity.Id,
+                Tag = entity.Tag,
+                Description = entity.Description
+            };
+
+            return new ServiceResponse<PromptDto>
+            {
+                Data = dto,
+                Success = true,
+                Message = "Промпт успешно добавлен"
             };
         }
-        public async Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, DeletePromptDto model)
+        public async Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, int promptId)
         {
             var prompt = await _dbcontext.Prompts
-                .FirstOrDefaultAsync(x => x.Id == model.PromtId && x.UserId == UserId);
+                .FirstOrDefaultAsync(x => x.Id == promptId && x.UserId == UserId);
 
             if (prompt == null)
             {
@@ -73,31 +121,39 @@ namespace ToMainApi.Services
                 Success = true
             };
         }
-        public async Task<ServiceResponse<bool>> UpdatePromptAsync(int UserId, UpdatePromptDto model)
+        public async Task<ServiceResponse<PromptDto>> UpdatePromptAsync(int UserId, UpdatePromptDto model)
         {
             var prompt = await _dbcontext.Prompts
                 .FirstOrDefaultAsync(x => x.Id == model.PromptId && x.UserId == UserId);
 
             if (prompt == null)
             {
-                return new ServiceResponse<bool>
+                return new ServiceResponse<PromptDto>
                 {
-                    Data = false,
+                    Data = null,
                     Success = false,
                     Message = "Prompt not found"
                 };
             }
 
             prompt.Tag = model.Tag;
-            prompt.Description = model.Descripion;
+            prompt.Description = model.Description; 
 
             _dbcontext.Prompts.Update(prompt);
             await _dbcontext.SaveChangesAsync();
 
-            return new ServiceResponse<bool>
+            var dto = new PromptDto
             {
-                Data = true,
-                Success = true
+                PromptId = prompt.Id,
+                Tag = prompt.Tag,
+                Description = prompt.Description
+            };
+
+            return new ServiceResponse<PromptDto>
+            {
+                Data = dto,
+                Success = true,
+                Message = "Промпт успешно обновлен"
             };
         }
     }

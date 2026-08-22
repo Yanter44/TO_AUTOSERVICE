@@ -4,6 +4,7 @@ using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Entities;
+using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Services
 {
@@ -16,56 +17,99 @@ namespace ToMainApi.Services
             _dbcontext = dbcontext;
             _cloudinaryService = cloudinaryService;
         }
-        public async Task<ServiceResponse<bool>> CreateNewApplication(CreateNewApplicationDto model)
+        public async Task<ServiceResponse<AgentDto>> GetMyProfile(int userId)
         {
-            var application = new Application
+            var existUser = await _dbcontext.Users
+                .Include(x => x.AgentProfile)
+                .FirstOrDefaultAsync(x => x.Id == userId);
+            if (existUser != null)
             {
-                VehicleCategoryId = model.VehicleCategoryId,
-                VIN = model.VIN,
-                GosNumber = model.GosNumber,
-                Brand = model.Brand,
-                Model = model.Model,
-                YearOfRelease = model.YearOfRelease,
-                FIO = model.FIO,
-                Email = model.Email,
-                PhoneNumber = model.PhoneNumber,
-                PtoId = model.PtoId,
-                Documents = new List<ApplicationDocument>(),
-                Photos = new List<ApplicationPhoto>(),
-                Status = Models.Enums.ApplicationStatus.Moderated,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            foreach (var document in model.DocumentFiles)
-            {
-                var url = await _cloudinaryService
-                    .UploadFileAsync(document.Document);
-
-                application.Documents.Add(new ApplicationDocument
+                var dto = new AgentDto
                 {
-                    Type = document.Type,
-                    Url = url
-                });
+                    Name = existUser.FIO,
+                    Role = existUser.RoleType.ToString()
+                };
+                return new ServiceResponse<AgentDto>
+                {
+                    Data = dto,
+                    Success = true
+                };
+            }
+            return new ServiceResponse<AgentDto>() { Success = false };
+        }
+        public async Task<ServiceResponse<decimal>> GetMyBalance(int userId)
+        {
+            var walletId = await _dbcontext.Users
+                .Where(x => x.Id == userId)
+                .Select(x => x.AgentProfile.Wallet.Id)
+                .FirstOrDefaultAsync();
+
+            if (walletId == 0)
+            {
+                return new ServiceResponse<decimal>
+                {
+                    Success = false,
+                    Message = "Кошелек не найден"
+                };
             }
 
-            foreach (var photo in model.VehiclePhotos)
-            {
-                var url = await _cloudinaryService
-                    .UploadImageAsync(photo.Photo);
+            var balance = await _dbcontext.Transactions
+                .Where(x => x.WalletId == walletId)
+                .SumAsync(x =>
+                    x.TransactionType == TransactionType.Credit.ToString()
+                        ? x.Amount
+                        : -x.Amount);
 
-                application.Photos.Add(new ApplicationPhoto
-                {
-                    VehiclePhotoType = photo.VehiclePhotoType,
-                    Url = url
-                });
-            }
-
-            _dbcontext.Applications.Add(application);
-            await _dbcontext.SaveChangesAsync();
-            return new ServiceResponse<bool>
+            return new ServiceResponse<decimal>
             {
                 Success = true,
-                Data = true
+                Data = balance
+            };
+        }
+        public async Task<ServiceResponse<decimal>> GetMyDebtLimit(int userId)
+        {
+            var wallet = await _dbcontext.Wallets.FirstOrDefaultAsync(x => x.Agent.UserId == userId);
+            if(wallet == null)
+            {
+                return new ServiceResponse<decimal>
+                {
+                    Success = false,
+                    Message = "Кошелек не найден"
+                };
+            }
+            return new ServiceResponse<decimal>
+            {
+                Data = wallet.DebtLimit,
+                Success = true,
+            };
+        }
+        public async Task<ServiceResponse<List<AgentTransactionDto>>> GetMyBalanceTransactionStory(int userId)
+        {
+            var wallet = await _dbcontext.Wallets.Include(x => x.Transactions).FirstOrDefaultAsync(x => x.Agent.UserId == userId);
+            if (wallet == null)
+            {
+                return new ServiceResponse<List<AgentTransactionDto>>
+                {
+                    Success = false,
+                    Message = "Кошелек не найден"
+                };
+            }
+
+            var transactions = wallet.Transactions
+                .Select(transaction => new AgentTransactionDto
+                {
+                    Amount = transaction.Amount,
+                    TransactionType = transaction.TransactionType,
+                    TransactionStatus = transaction.TransactionStatus,
+                    Description = transaction.Description,
+                    CreatedAt = transaction.CreatedAt
+                })
+                .ToList();
+
+            return new ServiceResponse<List<AgentTransactionDto>>
+            {
+                Data = transactions,
+                Success = true
             };
         }
 

@@ -17,11 +17,18 @@ namespace ToMainApi.Controllers
     [Route("[controller]")]
     public class AuthController : ControllerBase
     {
+        private ILogger<AuthController> _logger;
         private readonly IAuthService _authservice;
-        public AuthController(IAuthService authservice)
+        private readonly IUserService _userService;
+        public AuthController(IAuthService authservice,
+            ILogger<AuthController> logger,
+            IUserService userService)
         {
             _authservice = authservice;
+            _logger = logger;
+            _userService = userService;
         }
+
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
@@ -33,8 +40,8 @@ namespace ToMainApi.Controllers
             var result = await _authservice.LoginUser(user);
             if (result.Success)
             {
-                var cookieoption = GetCookieOptions(TimeSpan.FromMinutes(15));
-                Response.Cookies.Append("jwt", result.Data, cookieoption);
+                Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(1)));
+                Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
                 return Ok();
             }
             return BadRequest();
@@ -44,8 +51,11 @@ namespace ToMainApi.Controllers
         public async Task<IActionResult> TryRegistration([FromBody] TryRegistrationDto request)
         {
             var result = await _authservice.TryRegistration(request);
-            return Ok(result);
+            if (result.Success)
+                 return Ok(result);
+            return BadRequest(result);
         }
+
         [HttpPost("ConfirmRegistrationCode")]
         public async Task<IActionResult> ConfirmRegistrationCode([FromBody] ConfirmCodeDto model)
         {
@@ -56,6 +66,7 @@ namespace ToMainApi.Controllers
             }
             return BadRequest();
         }
+
         [HttpPost("FinishRegistration")]
         public async Task<IActionResult> FinishRegistration([FromBody] RegistrationDto request)
         {
@@ -63,10 +74,56 @@ namespace ToMainApi.Controllers
             if (!result.Success)
                 return BadRequest(result.Message);
 
-            Response.Cookies.Append("jwt", result.Data, GetCookieOptions(TimeSpan.FromMinutes(15)));
+            Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(50)));
+            Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
             return Ok(new { message = "Регистрация успешна" });
         }
 
+        [HttpGet("RefreshToken")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["jwtrefresh"];
+            if (string.IsNullOrEmpty(refreshToken))
+                return Unauthorized();
+
+            var checkRefreshTokenResult = await _authservice.CheckRefreshToken(refreshToken);
+            if (checkRefreshTokenResult.Success)
+            {
+                var userdtoresult = await _userService.GetUserById(checkRefreshTokenResult.Data);
+                var resultJwt = await _authservice.CreateAccessToken(userdtoresult.Data);
+                Response.Cookies.Append("jwt", resultJwt.Data, GetCookieOptions(TimeSpan.FromMinutes(50)));
+                return Ok();
+            }
+            return Unauthorized();         
+        }
+
+        [Authorize]
+        [HttpGet("SignOut")]
+        public async Task<IActionResult> SignOut()
+        {
+            var refreshToken = Request.Cookies["jwtrefresh"];
+            var result = await _authservice.SignOut(refreshToken);
+            if (result.Success)
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(-1)
+                };
+                Response.Cookies.Append("jwt", "", cookieOptions);
+                Response.Cookies.Append("jwtrefresh", "", cookieOptions);
+                return Ok();
+            }
+            return BadRequest();
+        }
+        [Authorize]
+        [HttpGet("Ping")]
+        public IActionResult Ping()
+        {
+            return Ok();
+        }
         [Authorize]
         [HttpGet("Me")]
         public async Task<IActionResult> WhoAmI()
@@ -74,6 +131,7 @@ namespace ToMainApi.Controllers
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
             return Ok(new WhoAmIResponseDto { RoleType = role });
         }
+        
         private CookieOptions GetCookieOptions(TimeSpan expiration)
         {
             return new CookieOptions
@@ -82,7 +140,7 @@ namespace ToMainApi.Controllers
                 Secure = false,
                 SameSite = SameSiteMode.Lax,
                 Path = "/",
-                Expires = DateTimeOffset.UtcNow.AddMinutes(15)
+                Expires = DateTimeOffset.UtcNow.Add(expiration)
             };
         }
     }

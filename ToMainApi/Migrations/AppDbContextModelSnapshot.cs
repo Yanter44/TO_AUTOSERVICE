@@ -68,6 +68,9 @@ namespace ToMainApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AgentId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Brand")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -104,8 +107,13 @@ namespace ToMainApi.Migrations
                     b.Property<int>("PtoId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("VIN")
                         .IsRequired()
@@ -119,6 +127,8 @@ namespace ToMainApi.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
 
                     b.HasIndex("Email");
 
@@ -144,8 +154,9 @@ namespace ToMainApi.Migrations
                     b.Property<int>("ApplicationId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Url")
                         .IsRequired()
@@ -177,8 +188,9 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
 
-                    b.Property<int>("VehiclePhotoType")
-                        .HasColumnType("integer");
+                    b.Property<string>("VehiclePhotoType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -187,6 +199,31 @@ namespace ToMainApi.Migrations
                     b.HasIndex("VehiclePhotoType");
 
                     b.ToTable("ApplicationPhotos");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.DocumentUploadRequire", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsRequire")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DocumentUploadRequires");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.ModeratorProfile", b =>
@@ -206,6 +243,69 @@ namespace ToMainApi.Migrations
                         .IsUnique();
 
                     b.ToTable("ModeratorProfiles");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PhotoUploadRequire", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<bool>("IsRequire")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PhotoType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PhotoUploadRequires");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Prompt", b =>
@@ -325,6 +425,37 @@ namespace ToMainApi.Migrations
                     b.ToTable("PtoPolicies");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.Transaction", b =>
                 {
                     b.Property<int>("Id")
@@ -345,8 +476,19 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("ExternalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransactionStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("WalletId")
                         .HasColumnType("integer");
@@ -354,6 +496,9 @@ namespace ToMainApi.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
 
                     b.HasIndex("WalletId");
 
@@ -383,6 +528,9 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<DateTime>("RegDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("RoleType")
                         .IsRequired()
                         .HasColumnType("text");
@@ -403,11 +551,19 @@ namespace ToMainApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("VehicleCategories");
                 });
@@ -424,6 +580,10 @@ namespace ToMainApi.Migrations
                         .HasColumnType("integer");
 
                     b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("DebtLimit")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -459,6 +619,12 @@ namespace ToMainApi.Migrations
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Application", b =>
                 {
+                    b.HasOne("ToMainApi.Models.Entities.AgentProfile", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ToMainApi.Models.Entities.Pto", "Pto")
                         .WithMany()
                         .HasForeignKey("PtoId")
@@ -470,6 +636,8 @@ namespace ToMainApi.Migrations
                         .HasForeignKey("VehicleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Agent");
 
                     b.Navigation("Pto");
 
@@ -503,6 +671,17 @@ namespace ToMainApi.Migrations
                     b.HasOne("ToMainApi.Models.Entities.User", "User")
                         .WithOne("ModeratorProfile")
                         .HasForeignKey("ToMainApi.Models.Entities.ModeratorProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.Notification", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -545,6 +724,17 @@ namespace ToMainApi.Migrations
                     b.Navigation("Pto");
 
                     b.Navigation("VehicleCategory");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Transaction", b =>

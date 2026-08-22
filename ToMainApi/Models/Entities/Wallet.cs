@@ -10,6 +10,7 @@ namespace ToMainApi.Models.Entities
         public AgentProfile Agent { get; set; }
 
         public decimal Balance { get; set; }
+        public decimal DebtLimit { get; set; }
 
         public List<Transaction> Transactions { get; set; }
     }

@@ -2,13 +2,16 @@
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Auth;
+using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 using ToMainApi.Models.Enums;
+using ToMainApi.Services.Crypt;
 
 namespace ToMainApi.Services
 {
@@ -29,13 +32,13 @@ namespace ToMainApi.Services
             _emailService = emailservice;
             _configuration = configuration;
         }
+
         public async Task<User> CheckUsers(LoginDto model)
         {
             if (model.Email != null && model.Password != null)
             {
                 var decryptedPassword = _encryptService.Encrypt(model.Password);
-                var result = await _dbContext.Users.Where(x => x.Email == model.Email && x.Password == decryptedPassword)
-                                      .FirstOrDefaultAsync();
+                var result = await _dbContext.Users.Where(x => x.Email == model.Email && x.Password == decryptedPassword).FirstOrDefaultAsync();
                 if(result != null)
                 { 
                     return result;
@@ -43,13 +46,69 @@ namespace ToMainApi.Services
             }
             return null;
         }
-        public Task<ServiceResponse<string>> LoginUser(User usermodel)
+
+        public async Task<ServiceResponse<bool>> SignOut(string refreshtoken)
+        {
+            var hashedtoken = TokenHasher.HashToken(refreshtoken);
+            var existrefreshtoken = await _dbContext.RefreshTokens.Where(x => x.Hash == hashedtoken).FirstOrDefaultAsync();
+            if (existrefreshtoken != null)
+            {
+                _dbContext.Remove(existrefreshtoken);
+                await _dbContext.SaveChangesAsync();
+                return new ServiceResponse<bool>() { Success = true };
+            }
+            return new ServiceResponse<bool>() { Success = false };
+        }
+
+        public async Task<ServiceResponse<int>> CheckRefreshToken(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return new ServiceResponse<int>(){ Success = false, Message = "Нет токена" };
+
+            var hashtoken = TokenHasher.HashToken(token);
+            var existuserWithThisToken = await _dbContext.RefreshTokens.AsNoTracking().Where(x => x.Hash == hashtoken).FirstOrDefaultAsync();
+            if(existuserWithThisToken != null)
+            {
+                return new ServiceResponse<int>() { Data = existuserWithThisToken.UserId, Success = true };
+            }
+            return new ServiceResponse<int>() { Success = false, Message = "Токен хуйня иди нахуй" };
+        }
+
+        public Task<ServiceResponse<string>> CreateAccessToken(UserDto userdtomodel)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userdtomodel.UserId.ToString()),
+                new Claim(ClaimTypes.Email, userdtomodel.Email),
+                new Claim(ClaimTypes.Role, userdtomodel.Role),
+            };
+                
+            var secretkey = _configuration["Jwt:Key"];
+            var secretissuer = _configuration["Jwt:Issuer"];
+            var secretaudience = _configuration["Jwt:Audience"];
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretkey));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: secretissuer,
+                audience: secretaudience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(1),
+                signingCredentials: creds
+            );
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+            return Task.FromResult(new ServiceResponse<string>() { Data = jwt, Success = true });
+        }
+
+        public async Task<ServiceResponse<AccessAndRefreshTokenModel>> LoginUser(User usermodel)
         {
             var claims = new List<Claim>
             {
                new Claim(ClaimTypes.NameIdentifier, usermodel.Id.ToString()),
                new Claim(ClaimTypes.Email, usermodel.Email),
-               new Claim(ClaimTypes.Role, usermodel.RoleType)
+               new Claim(ClaimTypes.Role, usermodel.RoleType),
             };
 
             var secretkey = _configuration["Jwt:Key"];
@@ -64,12 +123,39 @@ namespace ToMainApi.Services
                 issuer: secretissuer,      
                 audience: secretaudience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15),
+                expires: DateTime.UtcNow.AddMinutes(1),
                 signingCredentials: creds
             );
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-            return Task.FromResult(new ServiceResponse<string>() { Data = jwt, Success = true});
+            var jwtrefresh = GenerateRefreshToken();
+            
+            var returnablemodel = new AccessAndRefreshTokenModel()
+            {
+                AccessToken = jwt,
+                RefreshToken = jwtrefresh,
+            };
+            var refreshtokenmodel = new RefreshToken()
+            {
+                UserId = usermodel.Id,
+                Hash = TokenHasher.HashToken(jwtrefresh),
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(10),
+            };
+
+            _dbContext.RefreshTokens.Add(refreshtokenmodel);
+            await _dbContext.SaveChangesAsync();
+
+            return new ServiceResponse<AccessAndRefreshTokenModel>() { Data = returnablemodel, Success = true};
         }
+
+        private string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[54];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+
         public async Task<ServiceResponse<bool>> ConfirmRegistrationCode(ConfirmCodeDto model)
         {
             var code = await _redisService.GetStringAsync(model.RegistrationId);
@@ -81,6 +167,7 @@ namespace ToMainApi.Services
             }
             return new ServiceResponse<bool> { Success = false };
         }
+
         public async Task<ServiceResponse<string>> TryRegistration(TryRegistrationDto model)
         {
             var existuser = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == model.Email);
@@ -115,33 +202,44 @@ namespace ToMainApi.Services
                 return new ServiceResponse<string> { Data = registrationId, Success = true };
             }
             return new ServiceResponse<string> { Success = false, Message = "Пользователь с таким email зарегистрирован." +
-                                                                            "Войдите в аккаунт или используйте другой адрес" };
+                                                                            "Войдите в аккаунт или используйте другой адрес", Data = null};
         }
-        public async Task<ServiceResponse<string>> FinishRegistration(RegistrationDto registermodel)
+
+        public async Task<ServiceResponse<AccessAndRefreshTokenModel>> FinishRegistration(RegistrationDto registermodel)
         {
             var isConfirmed = await _redisService.GetStringAsync($"{registermodel.RegistrationId}_CodeConfirmed");
-
             if (string.IsNullOrEmpty(isConfirmed))
             {
-                return new ServiceResponse<string>
+                return new ServiceResponse<AccessAndRefreshTokenModel>
                 {
                     Success = false,
-                    Message = "Почта не была подтверждена или время сессии истекло. Пожалуйста, начните регистрацию заново."
+                    Message = "Почта не подтверждена"
                 };
             }
-            var newUser = new User()
+            var newUser = new User
             {
                 Email = registermodel.Email,
                 FIO = registermodel.FIO,
                 Password = _encryptService.Encrypt(registermodel.Password),
-                RoleType = Role.Agent.ToString()
+                RoleType = Role.Agent.ToString(),
+                RegDate = DateTime.UtcNow,
+                AgentProfile = new AgentProfile
+                {
+                    Wallet = new Wallet()
+                }
             };
 
             await _dbContext.Users.AddAsync(newUser);
+            await _dbContext.SaveChangesAsync(); 
+
+            var result = await LoginUser(newUser);
             await _dbContext.SaveChangesAsync();
             await _redisService.DeleteAsync($"{registermodel.RegistrationId}_CodeConfirmed");
-            var result = await LoginUser(newUser);
-            return new ServiceResponse<string> { Data = result.Data, Success = true };
+            return new ServiceResponse<AccessAndRefreshTokenModel>
+            {
+                Data = result.Data,
+                Success = true
+            };
         }
     }
 }

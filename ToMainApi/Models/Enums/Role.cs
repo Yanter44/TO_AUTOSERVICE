@@ -5,6 +5,5 @@
         Admin,
         Moderator,
         Agent,
-        SubAgent
     }
 }

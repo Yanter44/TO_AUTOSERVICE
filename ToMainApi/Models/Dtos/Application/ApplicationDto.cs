@@ -29,6 +29,6 @@ namespace ToMainApi.Models.Dtos.Application
         // PTO
         public int PtoId { get; set; }
         public DateTime CreatedAt { get; set; }
-        public ApplicationStatus Status { get; set; }
+        public string Status { get; set; }
     }
 }

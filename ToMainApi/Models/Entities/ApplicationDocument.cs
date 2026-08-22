@@ -9,7 +9,7 @@ namespace ToMainApi.Models.Entities
         public int ApplicationId { get; set; }
         public Application Application { get; set; }
 
-        public DocumentType Type { get; set; }
+        public string Type { get; set; }
 
         public string Url { get; set; }  
     }

@@ -10,5 +10,7 @@
         public AgentProfile AgentProfile { get; set; }
         public ModeratorProfile ModeratorProfile { get; set; }
         public AdminProfile AdminProfile { get; set; }
+
+        public DateTime RegDate { get; set; }
     }
 }

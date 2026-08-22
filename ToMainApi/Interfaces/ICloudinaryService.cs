@@ -6,5 +6,6 @@ namespace ToMainApi.Interfaces
     {
         Task<string> UploadFileAsync(IFormFile file);
         Task<string> UploadImageAsync(IFormFile file);
+        Task<MemoryStream> DownloadPhotoAsStreamAsync(string photoUrl);
     }
 }

@@ -4,7 +4,7 @@ namespace ToMainApi.Models
 {
     public class DocumentFiles
     {
-        public DocumentType Type { get; set; }
+        public string Type { get; set; }
         public IFormFile Document { get; set; }
     }
 }
