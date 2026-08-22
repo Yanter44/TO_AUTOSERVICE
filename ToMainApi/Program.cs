@@ -177,6 +177,11 @@ app.MapHub<NotificationHub>("/notificationHub");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"{DateTime.Now:HH:mm:ss} → {context.Request.Method} {context.Request.Path}");
+    await next();
+});
 //if (app.Environment.IsDevelopment())
 //{
 //    app.UseSwagger();
