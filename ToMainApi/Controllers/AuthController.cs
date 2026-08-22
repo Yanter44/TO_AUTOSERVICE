@@ -32,21 +32,38 @@ namespace ToMainApi.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            var user = await _authservice.CheckUsers(request);
-            if(user == null)
+            // Логируем входящий запрос
+            Console.WriteLine($"[Login] Запрос получен: Email={request?.Email}, Password={request.Password}");
+
+            if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
             {
-                return BadRequest();
+                Console.WriteLine("[Login] ❌ Ошибка: Email или Password пустые");
+                return BadRequest(new { message = "Email и пароль обязательны" });
             }
+
+            var user = await _authservice.CheckUsers(request);
+            if (user == null)
+            {
+                Console.WriteLine($"[Login] ❌ Пользователь не найден: {request.Email}");
+                return BadRequest(new { message = "Неверный email или пароль" });
+            }
+
+            Console.WriteLine($"[Login] ✅ Пользователь найден: {user.Email}, Role: {user.RoleType}");
+
             var result = await _authservice.LoginUser(user);
             if (result.Success)
             {
+                Console.WriteLine($"[Login] ✅ Логин успешен для {user.Email}");
+
                 Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(1)));
                 Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
-                return Ok();
-            }
-            return BadRequest();
-        }
 
+                return Ok(new { message = "Успешный вход" });
+            }
+
+            Console.WriteLine($"[Login] ❌ Ошибка при логине для {user.Email}: {result.Message}");
+            return BadRequest(new { message = result.Message ?? "Ошибка при входе" });
+        }
         [HttpPost("TryRegistration")]
         public async Task<IActionResult> TryRegistration([FromBody] TryRegistrationDto request)
         {
