@@ -24,8 +24,8 @@ jobs:
       # 3. Сборка и пуш API
       - name: Build and push API
         run: |
-          docker build -t yanterbrown/toautoservice-api:latest .
-          docker push yanterbrown//toautoservice-api:latest
+          docker build -f ToMainApi/Dockerfile -t yanterbrown/toautoservice-api:latest .
+          docker push yanterbrown/toautoservice-api:latest
           
       # 4. Деплой контейнеров на сервер
       - name: Deploy containers to server
