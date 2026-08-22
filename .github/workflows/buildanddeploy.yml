@@ -13,7 +13,57 @@ jobs:
       # 1. Checkout
       - name: Checkout code
         uses: actions/checkout@v3
-
+        
+      # 2. Создание appsettings.json
+      - name: Create appsettings.json
+        run: |
+          cat > ToMainApi/appsettings.json << 'EOF'
+          {
+            "Logging": {
+              "LogLevel": {
+                "Default": "Information",
+                "Microsoft.AspNetCore": "Warning"
+              }
+            },
+            "AdminAccount": {
+              "Email": "${{ secrets.ADMINACCOUNTEMAIL }}",
+              "Password": "${{ secrets.ADMINACCOUNTPASSWORD }}",
+              "FIO": "${{ secrets.ADMINACCOUNTFIO }}",
+              "RoleType": "${{secrets.ADMINACCOUNTROLETYPE}}"
+            },
+            "Jwt": {
+              "Key": "${{ secrets.JWTKEY }}",
+              "Issuer": "${{ secrets.JWTISSUER }}",
+              "Audience": "${{ secrets.JWTAUDIENCE }}"
+            },
+            "AesEncryption": {
+              "Key": "${{ secrets.AESENCRYPTIONKEY }}"
+            },
+            "ToServiceDb": {
+              "ConnectionString": "${{ secrets.TOSERVICEDBCONNECTIONSTRING }}"
+            },
+            "Redis": {
+              "ConnectionString": "${{ secrets.REDISCONNECTIONSTRING }}"
+            },
+            "CloudinaryService": {
+              "Cloud": "${{ secrets.CLOUDINARYSERVICECLOUD }}",
+              "ApiKey": "${{ secrets.CLOUDINARYSERVICEAPIKEY }}",
+              "ApiSecret": "${{ secrets.CLOUDINARYSERVICEAPISECRET }}"
+            },
+            "MailerSend": {
+              "ApiKey": "${{ secrets.MAILERSENDAPIKEY }}",
+              "FromEmail": "${{ secrets.MAILERSENDFROMEMAIL }}"
+            },
+            "ReveAi": {
+              "ApiKey": "${{ secrets.REVEAIAPIKEY }}"
+            },
+            "NanoBanana": {
+              "ApiKey": "${{ secrets.NANOBANANAAPIKEY }}"
+            },
+            "AllowedHosts": "*"
+          }
+          EOF
+        
       # 2. Логин в Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -33,7 +83,7 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd /var/www/toautoserviceprojectdocker
             docker-compose pull
