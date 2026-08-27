@@ -4,6 +4,7 @@ using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Admin;
 using ToMainApi.Models.Dtos.Agent;
+using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Services
 {
@@ -34,8 +35,27 @@ namespace ToMainApi.Services
             }
             return new ServiceResponse<AdminDto>() { Success = false };
         }
-        public async Task<ServiceResponse<bool>> ChangeUserRole()
+        public async Task<ServiceResponse<bool>> ChangeUserRole(ChangeUserRoleDto model)
         {
+            var existUser = await _dbcontext.Users.FirstOrDefaultAsync(x => x.Id == model.UserId);
+            if (existUser != null)
+            {
+                var existUserRole = existUser.RoleType;
+                Enum.TryParse<Models.Enums.Role>(existUserRole, true, out var role);
+                switch (role)
+                {
+                    case Role.Agent:
+
+                        break;
+
+                    case Role.Admin:
+
+                        break;
+                    case Role.Moderator:
+
+                        break;
+                }
+            }
             return null;
         }
         public async Task<ServiceResponse<bool>> ChangeUserDebtLimit(ChangeUserDebtLimitDto model)

@@ -6,5 +6,6 @@ namespace ToMainApi.Interfaces
     public interface IAdminService
     {
         Task<ServiceResponse<AdminDto>> GetMyProfile(int userId);
+        Task<ServiceResponse<bool>> ChangeUserRole(ChangeUserRoleDto model);
     }
 }

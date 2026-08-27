@@ -13,22 +13,18 @@ namespace ToMainApi.Controllers
     {
         private readonly IAdminService _adminService;
         private readonly IApplicationService _applicationService;
-
         //TEST_SERVICES
         private readonly IimageMetadataEditor _metadataEditor;
         private readonly IimageTextOverlayService _imagetextoverlayservice;
-        private readonly INotificationSender _notificationSender;
         public AdminController(IAdminService adminService,
             IApplicationService applicationService, 
             IimageMetadataEditor metadataEditor,
-            IimageTextOverlayService imagetextoverlayservice,
-            INotificationSender notificationSender)
+            IimageTextOverlayService imagetextoverlayservice
+            )
         {
             _adminService = adminService;
             _applicationService = applicationService;
             _metadataEditor = metadataEditor;
-            _imagetextoverlayservice = imagetextoverlayservice;
-            _notificationSender = notificationSender;
         }
 
         [Authorize(Roles = "Admin")]
@@ -54,21 +50,19 @@ namespace ToMainApi.Controllers
         }
         [Authorize(Roles = "Admin")]
         [HttpPost("ChangeRoleUser")]
-        public async Task<IActionResult> ChangeUserRole()
+        public async Task<IActionResult> ChangeUserRole([FromBody] ChangeUserRoleDto model)
         {
-            return Ok();
+            var result = await _adminService.ChangeUserRole(model);
+            if (result.Success)
+                return Ok(result);          
+            return BadRequest(result);
         }
+
         [Authorize(Roles = "Admin")]
         [HttpPost("ChangeUserDebtLimit")]
         public async Task<IActionResult> ChangeUserDebtLimit([FromBody] ChangeUserDebtLimitDto model)
         {
         //    var result = await _adminService.
-            return Ok();
-        }
-        [Authorize(Roles = "Admin")]
-        [HttpPost("ChangeUserStatus")]
-        public async Task<IActionResult> ChangeUserStatus()
-        {
             return Ok();
         }
 
@@ -78,14 +72,6 @@ namespace ToMainApi.Controllers
             using var stream = photo.OpenReadStream();
             var result = await _imagetextoverlayservice.AddText(stream, "Penis");
             return Ok(result);
-        }
-
-        [HttpPost("SendSomethingToAgents")]
-        public async Task<IActionResult> SendSomethingToAgents()
-        {
-            _notificationSender.SomethingToAgents("sperma");
-            return Ok();
-
         }
     }
 }

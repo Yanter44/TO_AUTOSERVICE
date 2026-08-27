@@ -91,17 +91,17 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowLocalhost8000",
-//        policy =>
-//        {
-//            policy.WithOrigins("http://localhost:8000")
-//                  .AllowAnyHeader()
-//                  .AllowAnyMethod()
-//                  .AllowCredentials();
-//        });
-//});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost8000",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:8000")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -134,19 +134,22 @@ builder.Services.AddScoped<IRedisService, RedisService>();
 builder.Services.AddHttpClient<IEmailService, MailerSendService>();
 builder.Services.AddTransient<IEncryptService, AesEncryptionService>();
 builder.Services.AddTransient<IAuthService, AuthService>();
-builder.Services.AddTransient<IAgentService, AgentService>();
+builder.Services.AddScoped<IAgentService, AgentService>();
 builder.Services.AddTransient<IAdminService, AdminService>();
 builder.Services.AddHttpClient<ICloudinaryService, CloudinaryService>();
 builder.Services.AddTransient<IModeratorService, ModeratorService>();
-builder.Services.AddTransient<IPromptService, PromptService>();
-builder.Services.AddTransient<IPtoService, PtoService>();
+builder.Services.AddScoped<IPromptService, PromptService>();
+builder.Services.AddScoped<IPtoService, PtoService>();
 builder.Services.AddTransient<IApplicationService, ApplicationService>();
 builder.Services.AddTransient<IVehicleService, VehicleService>();
-builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddTransient<IPhotoUploadRequirementService, PhotoUploadRequirementService>();
 builder.Services.AddTransient<IDocumentUploadRequirementService, DocumentUploadRequirementService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddScoped<INotificationSender, NotificationSender>();
+builder.Services.AddScoped<IApplicationNotificationService, ApplicationNotificationsService>();
+builder.Services.AddScoped<IPaymentNotificationService, PaymentsNotificationsService>();
+
+builder.Services.AddScoped<INotificationsSender,NotificationSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 builder.Services.AddHttpClient<INeuronNetworkStrategy,NanoBananaAiProvider>();
@@ -161,7 +164,7 @@ builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
 
-builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command",LogLevel.None);
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB
@@ -170,7 +173,7 @@ var app = builder.Build();
 
 await DbInitializer.SeedAdminAsync(app);
 await DbInitializer.SeedVehicleCategories(app);
-//app.UseCors("AllowLocalhost8000");
+app.UseCors("AllowLocalhost8000");
 
 app.MapHub<NotificationHub>("/notificationHub");
 
@@ -182,11 +185,11 @@ app.Use(async (context, next) =>
     Console.WriteLine($"{DateTime.Now:HH:mm:ss} → {context.Request.Method} {context.Request.Path}");
     await next();
 });
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 app.MapControllers();
 
 app.Run();

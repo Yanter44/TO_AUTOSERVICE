@@ -4,6 +4,7 @@ using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Dtos.User;
+using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Services
 {
@@ -13,6 +14,71 @@ namespace ToMainApi.Services
         public UserService(AppDbContext dbcontext)
         {
             _dbcontext = dbcontext;
+        }
+        public async Task<ServiceResponse<AgentDto>> GetAgentByUserId(int userId)
+        {
+            var agent = await _dbcontext.AgentProfiles
+                .AsNoTracking()
+                .Include(x => x.User)
+                .Include(x => x.Wallet)
+                .FirstOrDefaultAsync(x => x.UserId == userId);
+
+            if (agent == null)
+            {
+                return new ServiceResponse<AgentDto>
+                {
+                    Data = null,
+                    Success = false,
+                    Message = "Агент не найден"
+                };
+            }
+
+            return new ServiceResponse<AgentDto>
+            {
+                Data = new AgentDto
+                {
+                    Id = agent.Id,
+                    UserId = agent.UserId,
+                    FIO = agent.User.FIO,
+                    Email = agent.User.Email,
+                    Balance = agent.Wallet?.Balance ?? 0,
+                    DebtLimit = agent.Wallet?.DebtLimit ?? 0
+                },
+                Success = true,
+                Message = "Агент найден"
+            };
+        }
+        public async Task<ServiceResponse<List<UserDto>>> GetUsersByIds(List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return new ServiceResponse<List<UserDto>>
+                {
+                    Data = new List<UserDto>(),
+                    Success = true,
+                    Message = "Список ID пуст"
+                };
+            }
+
+            var users = await _dbcontext.Users
+                .AsNoTracking()
+                .Where(x => ids.Contains(x.Id))
+                .Select(x => new UserDto
+                {
+                    UserId = x.Id,
+                    FIO = x.FIO,
+                    Email = x.Email,
+                    Role = x.RoleType,
+                    RegDate = x.RegDate
+                })
+                .ToListAsync();
+
+            return new ServiceResponse<List<UserDto>>
+            {
+                Data = users,
+                Success = true,
+                Message = $"Найдено {users.Count} пользователей"
+            };
         }
         public async Task<ServiceResponse<UserDto>> GetUserById(int userId)
         {
@@ -134,8 +200,8 @@ namespace ToMainApi.Services
                 .Select(x => new AgentDto
                 {
                     Id = x.Id,
-                    Name = x.FIO,
-                    Role = x.RoleType,
+                    FIO = x.FIO,
+                    //Role = x.RoleType,
                     Balance = x.AgentProfile.Wallet.Balance
                 })
                 .ToListAsync();

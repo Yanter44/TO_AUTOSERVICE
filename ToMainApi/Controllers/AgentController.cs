@@ -41,24 +41,23 @@ namespace ToMainApi.Controllers
                 return Ok(result.Data);
             return BadRequest(result.Message);
         }
-
-        [Authorize(Roles = "Agent")]
-        [HttpGet("GetMyApplications")]
-        public async Task<IActionResult> GetMyApplications([FromQuery] PaginationDto model)
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _applicationService.GetAgentApplications(userId, model);
-            if (result.Success)
-                return Ok(result.Data);
-            return BadRequest(result.Message);
-        }
-
         [Authorize(Roles = "Agent")]
         [HttpGet("GetMyDebtLimit")]
         public async Task<IActionResult> GetMyDebtLimit()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _agentService.GetMyDebtLimit(userId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [Authorize(Roles = "Agent")]
+        [HttpGet("GetMyCurrentDebt")]
+        public async Task<IActionResult> GetMyCurrentDebt()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var result = await _agentService.GetMyCurrentDebt(userId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

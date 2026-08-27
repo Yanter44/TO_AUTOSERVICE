@@ -10,6 +10,7 @@ namespace ToMainApi.Interfaces
         Task<ServiceResponse<AgentDto>> GetMyProfile(int userId);
         Task<ServiceResponse<decimal>> GetMyBalance(int userId);
         Task<ServiceResponse<decimal>> GetMyDebtLimit(int userId);
+        Task<ServiceResponse<decimal>> GetMyCurrentDebt(int userId);
         Task<ServiceResponse<List<AgentTransactionDto>>> GetMyBalanceTransactionStory(int userId);
     }
 }

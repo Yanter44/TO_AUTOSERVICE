@@ -1,6 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
+using ToMainApi.Features.Application.Events.Applications;
+using ToMainApi.Features.Application.Events.Payments;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Payments;
 using ToMainApi.Models.Entities;
@@ -11,10 +14,11 @@ namespace ToMainApi.Services
     public class PaymentService : IPaymentService
     {
         private readonly AppDbContext _dbcontext;
-
-        public PaymentService(AppDbContext dbcontext)
+        private readonly IMediator _mediator;
+        public PaymentService(AppDbContext dbcontext, IMediator mediator)
         {
             _dbcontext = dbcontext;
+            _mediator = mediator;
         }
 
         public async Task<ServiceResponse<bool>> Credit(CreditRequest request)
@@ -71,6 +75,8 @@ namespace ToMainApi.Services
                 agentWallet.Balance = balance;
                 await _dbcontext.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
+
+                await _mediator.Publish(new CreditBalanceEvent(request.AgentId, request.Amount));
 
                 return new ServiceResponse<bool>
                 {
@@ -158,7 +164,7 @@ namespace ToMainApi.Services
                 agentWallet.Balance = balance;
                 await _dbcontext.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
-
+                await _mediator.Publish(new DebitBalanceEvent(request.AgentId, request.Amount));
                 return new ServiceResponse<bool>
                 {
                     Success = true,

@@ -8,6 +8,7 @@ using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Dtos.Application;
 using ToMainApi.Models.Dtos.Pagination;
+using ToMainApi.Models.Dtos.User;
 using ToMainApi.Services;
 
 namespace ToMainApi.Controllers
@@ -21,14 +22,31 @@ namespace ToMainApi.Controllers
         {
             _applicationService = applicationservice;
         }
-        [Authorize(Roles ="Admin,Moderator")]
-        [HttpGet("GetAllApplications")]
-        public async Task<IActionResult> GetAllApplications([FromQuery] PaginationDto model)
+        [Authorize]
+        [HttpGet("GetApplications")]
+        public async Task<IActionResult> GetApplications([FromQuery] PaginationDto model)
         {
-            var result = await _applicationService.GetAllApplications(model);
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userrole = (User.FindFirst(ClaimTypes.Role)?.Value);
+            var usercontext = new UserContextDto() { Id = userid, Role = userrole };
+            var result = await _applicationService.GetApplications(usercontext, model);
             if (result.Success)
                 return Ok(result.Data);
             return BadRequest(result.Message);
+        }
+
+        [Authorize]
+        [HttpGet("GetApplicationsMetrics")]
+        public async Task<IActionResult> GetApplicationsMetrics()
+        {
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userrole = (User.FindFirst(ClaimTypes.Role)?.Value);
+            var userContext = new UserContextDto() { Id = userid, Role = userrole};
+            var result = await _applicationService.GetApplicationsMetrics(userContext);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+
         }
 
         [Authorize(Roles ="Admin,Moderator")]

@@ -4,6 +4,6 @@
     {
         Moderated,
         Rejected,
-        Confirmed
+        Approved
     }
 }

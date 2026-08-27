@@ -26,8 +26,8 @@ namespace ToMainApi.Services
             {
                 var dto = new AgentDto
                 {
-                    Name = existUser.FIO,
-                    Role = existUser.RoleType.ToString()
+                    FIO = existUser.FIO,
+                    //Role = existUser.RoleType.ToString()
                 };
                 return new ServiceResponse<AgentDto>
                 {
@@ -80,6 +80,23 @@ namespace ToMainApi.Services
             return new ServiceResponse<decimal>
             {
                 Data = wallet.DebtLimit,
+                Success = true,
+            };
+        }
+        public async Task<ServiceResponse<decimal>> GetMyCurrentDebt(int userId)
+        {
+            var wallet = await _dbcontext.Wallets.FirstOrDefaultAsync(x => x.Agent.UserId == userId);
+            if(wallet == null)
+            {
+                return new ServiceResponse<decimal>
+                {
+                    Success = false,
+                    Message = "Кошелек не найден"
+                };
+            }
+            return new ServiceResponse<decimal>
+            {
+                Data = wallet.CurrentDebt,
                 Success = true,
             };
         }
