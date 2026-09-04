@@ -2,8 +2,10 @@
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Prompt;
 using ToMainApi.Models.Dtos.Pto;
+using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Services
@@ -42,6 +44,48 @@ namespace ToMainApi.Services
             {
                 Success = true,
                 Data = result
+            };
+        }
+        public async Task<ServiceResponse<PagedResponse<PtoResponseDto>>> GetPtos(UserContextDto userContext, PaginationDto paginationModel)
+        {
+            var query = _dbcontext.Ptos
+                .AsNoTracking()
+                .Include(x => x.PricePolicies)
+                .AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var ptos = await query
+                .Skip((paginationModel.Page - 1) * paginationModel.PageSize)
+                .Take(paginationModel.PageSize)
+                .ToListAsync();
+
+            var result = ptos.Select(x => new PtoResponseDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                RsaNumber = x.RsaNumber,
+                Address = x.Address,
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+                PricePolicies = x.PricePolicies.Select(p => new PtoPricePolicyDto
+                {
+                    VehicleCategoryId = p.VehicleCategoryId,
+                    Price = p.Price
+                }).ToList()
+            }).ToList();
+
+            return new ServiceResponse<PagedResponse<PtoResponseDto>>
+            {
+                Success = true,
+                Data = new PagedResponse<PtoResponseDto>
+                {
+                    Items = result,
+                    TotalCount = totalCount,
+                    Page = paginationModel.Page,
+                    PageSize = paginationModel.PageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / paginationModel.PageSize)
+                }
             };
         }
         public async Task<ServiceResponse<bool>> AddNewPto(AddNewPtoDto model)

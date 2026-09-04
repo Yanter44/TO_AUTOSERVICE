@@ -5,7 +5,10 @@ using ToMainApi.DbContext;
 using ToMainApi.Features.Application.Events.Applications;
 using ToMainApi.Features.Application.Events.Payments;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Application;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Payments;
+using ToMainApi.Models.Dtos.Pto;
 using ToMainApi.Models.Entities;
 using ToMainApi.Models.Enums;
 
@@ -15,10 +18,14 @@ namespace ToMainApi.Services
     {
         private readonly AppDbContext _dbcontext;
         private readonly IMediator _mediator;
-        public PaymentService(AppDbContext dbcontext, IMediator mediator)
+        private readonly ILogger<PaymentService> _logger;
+        public PaymentService(AppDbContext dbcontext, 
+            IMediator mediator,
+            ILogger<PaymentService> logger)
         {
             _dbcontext = dbcontext;
             _mediator = mediator;
+            _logger = logger;
         }
 
         public async Task<ServiceResponse<bool>> Credit(CreditRequest request)
@@ -153,7 +160,7 @@ namespace ToMainApi.Services
                     TransactionStatus = TransactionStatus.Completed.ToString(),
                     CreatedAt = DateTime.UtcNow
                 });
-   
+
                 await _dbcontext.SaveChangesAsync();
                 var balance = await _dbcontext.Transactions.Where(x => x.WalletId == wallet.Id).SumAsync(x =>
                                                        x.TransactionType == TransactionType.Credit.ToString()
@@ -205,6 +212,55 @@ namespace ToMainApi.Services
                 Data = transactions,
                 Success = true
             };
+        }
+        public async Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(PaginationDto paginationModel)
+        {
+            try
+            {
+                var query = _dbcontext.Transactions
+                    .AsNoTracking()
+                    .Select(x => new TransactionDto
+                    {
+                        ExternalId = x.ExternalId.ToString(),
+                        AgentName = x.Wallet.Agent.User.FIO,
+                        Amount = x.Amount,
+                        TransactionType = x.TransactionType,
+                        TransactionStatus = x.TransactionStatus,
+                        Description = x.Description,
+                        CreatedAt = x.CreatedAt
+                    });
+
+                var totalCount = await _dbcontext.Transactions.CountAsync();
+
+                var result = await query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Skip((paginationModel.Page - 1) * paginationModel.PageSize)
+                    .Take(paginationModel.PageSize)
+                    .ToListAsync();
+
+                return new ServiceResponse<PagedResponse<TransactionDto>>
+                {
+                    Success = true,
+                    Data = new PagedResponse<TransactionDto>
+                    {
+                        Items = result,
+                        TotalCount = totalCount,
+                        Page = paginationModel.Page,
+                        PageSize = paginationModel.PageSize,
+                        TotalPages = (int)Math.Ceiling((double)totalCount / paginationModel.PageSize)
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении транзакций");
+                return new ServiceResponse<PagedResponse<TransactionDto>>
+                {
+                    Data = null,
+                    Success = false,
+                    Message = ResponseMessages.UnSuccess
+                };
+            }
         }
     }
 }

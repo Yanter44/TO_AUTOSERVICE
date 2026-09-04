@@ -2,7 +2,9 @@
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Prompt;
+using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Services
@@ -14,10 +16,10 @@ namespace ToMainApi.Services
         {
             _dbcontext = dbcontext;
         }
-        public async Task<ServiceResponse<List<PromptDto>>> GetAllPrompts(int UserId)
+        public async Task<ServiceResponse<List<PromptDto>>> GetAllPrompts(UserContextDto userContext)
         {
            var prompts = await _dbcontext.Prompts.AsNoTracking()
-                .Where(x => x.UserId == UserId)
+                .Where(x => x.UserId == userContext.Id)
                 .Select(x => new PromptDto
                 {
                    PromptId = x.Id,
@@ -28,6 +30,40 @@ namespace ToMainApi.Services
             return new ServiceResponse<List<PromptDto>>
             {
                 Data = prompts,
+                Success = true
+            };
+        }
+
+        public async Task<ServiceResponse<PagedResponse<PromptDto>>> GetPrompts(UserContextDto userContext,
+           PaginationDto paginationModel)
+        {
+            var query = _dbcontext.Prompts
+                .AsNoTracking()
+                .Where(x => x.UserId == userContext.Id)
+                .Select(x => new PromptDto
+                {
+                    PromptId = x.Id,
+                    Tag = x.Tag,
+                    Description = x.Description
+                });
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((paginationModel.Page - 1) * paginationModel.PageSize)
+                .Take(paginationModel.PageSize)
+                .ToListAsync();
+
+            return new ServiceResponse<PagedResponse<PromptDto>>
+            {
+                Data = new PagedResponse<PromptDto>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    Page = paginationModel.Page,
+                    PageSize = paginationModel.PageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / paginationModel.PageSize)
+                },
                 Success = true
             };
         }

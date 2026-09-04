@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Payments;
 
 namespace ToMainApi.Controllers
@@ -43,6 +44,16 @@ namespace ToMainApi.Controllers
             if (result.Success)
                 return Ok(result.Data);
             return BadRequest();
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetTransactions")]
+        public async Task<IActionResult> GetTransactions([FromQuery] PaginationDto model)
+        {
+            var result = await _paymentService.GetTransactions(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

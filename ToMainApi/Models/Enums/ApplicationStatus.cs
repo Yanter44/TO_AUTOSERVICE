@@ -4,6 +4,8 @@
     {
         Moderated,
         Rejected,
-        Approved
+        Approved,
+        Processing,
+        Error,
     }
 }

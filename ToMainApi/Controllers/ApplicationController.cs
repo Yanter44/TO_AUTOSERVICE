@@ -1,15 +1,14 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System.Security.Claims;
-using ToMainApi.Features.Application.Events;
+using ToMainApi.Common;
 using ToMainApi.Interfaces;
+using ToMainApi.Models;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Dtos.Application;
 using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.User;
-using ToMainApi.Services;
+using ToMainApi.Models.Entities;
 
 namespace ToMainApi.Controllers
 {
@@ -18,9 +17,14 @@ namespace ToMainApi.Controllers
     public class ApplicationController : ControllerBase
     {
         private readonly IApplicationService _applicationService;
-        public ApplicationController(IApplicationService applicationservice)
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ICloudinaryService _cloudinaryService;
+        public ApplicationController(IApplicationService applicationservice, 
+            IServiceScopeFactory scopefactory, ICloudinaryService cloudinaryService)
         {
             _applicationService = applicationservice;
+            _scopeFactory = scopefactory;
+            _cloudinaryService = cloudinaryService;
         }
         [Authorize]
         [HttpGet("GetApplications")]
@@ -31,8 +35,8 @@ namespace ToMainApi.Controllers
             var usercontext = new UserContextDto() { Id = userid, Role = userrole };
             var result = await _applicationService.GetApplications(usercontext, model);
             if (result.Success)
-                return Ok(result.Data);
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize]
@@ -63,12 +67,25 @@ namespace ToMainApi.Controllers
         [HttpPost("CreateNewApplication")]
         public async Task<IActionResult> CreateNewApplication([FromForm][Bind(Prefix = "")] CreateNewApplicationDto model)
         {
-            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _applicationService.CreateNewApplication(userid, model);
-            if (result.Success)
-                return Ok();
-            
-            return BadRequest(result.Message);
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                return BadRequest(new ServiceResponse<bool>() { Success = false, Message = $"Ошибка валидации [{errors}]" });
+            }
+
+            _ = Task.Run(async () =>
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var applicationService = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+                var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                 await applicationService.CreateNewApplication(userid, model);
+            });
+
+            return Ok(new ServiceResponse<bool>()
+            {
+                Success = true,
+                Message = "Заявка успешно отправлена на обработку"
+            });
         }
 
         [Authorize(Roles ="Admin,Moderator")]

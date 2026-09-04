@@ -4,6 +4,7 @@ using System.Security.Claims;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Dtos.Pagination;
+using ToMainApi.Models.Dtos.User;
 
 namespace ToMainApi.Controllers
 {
@@ -64,14 +65,26 @@ namespace ToMainApi.Controllers
         }
 
         [Authorize(Roles = "Agent")]
-        [HttpGet("GetMyBalanceTransactionStory")]
-        public async Task <IActionResult> GetMyBalanceTransactionStory()
+        [HttpGet("GetMyAllBalanceTransactionStory")]
+        public async Task <IActionResult> GetMyAllBalanceTransactionStory()
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _agentService.GetMyBalanceTransactionStory(userId);
+            var result = await _agentService.GetMyAllBalanceTransactionStory(userId);
             if (result.Success)
                 return Ok(result.Data);
             return BadRequest(result.Message);
+        }
+
+        [Authorize(Roles = "Agent")]
+        [HttpGet("GetMyBalanceTransactionStory")]
+        public async Task<IActionResult> GetMyBalanceTransactionStory([FromQuery] PaginationDto model)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userContext = new UserContextDto() { Id = userId };
+            var result = await _agentService.GetMyBalanceTransactionStory(userContext,model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

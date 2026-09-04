@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Ai;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 using ToMainApi.Models.Enums;
@@ -19,7 +20,7 @@ namespace ToMainApi.Controllers
             _userService = userService;
         }
 
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpGet("GetAllUsers")]
         public async Task<IActionResult> GetAllUsers()
         {          
@@ -29,6 +30,17 @@ namespace ToMainApi.Controllers
 
             return BadRequest(result.Message);
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetUsers")]
+        public async Task<IActionResult> GetUsers([FromQuery] PaginationDto model)
+        {
+            var result = await _userService.GetUsers(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllUsersExcept")]
         public async Task<IActionResult> GetAllUsersExcept()
@@ -46,8 +58,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _userService.GetAllAgents();
             if (result.Success)
-                return Ok(result.Data);
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin,Moderator")]

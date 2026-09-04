@@ -1,4 +1,5 @@
 ﻿using ToMainApi.Common;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Payments;
 
 namespace ToMainApi.Interfaces
@@ -6,6 +7,7 @@ namespace ToMainApi.Interfaces
     public interface IPaymentService
     {
         Task<ServiceResponse<List<TransactionDto>>> GetAllTransactions();
+        Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(PaginationDto paginationModel);
         Task<ServiceResponse<bool>> Credit(CreditRequest request);
         Task<ServiceResponse<bool>> Debit(DebitRequest request);
     }

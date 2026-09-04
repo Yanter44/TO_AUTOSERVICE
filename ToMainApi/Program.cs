@@ -173,7 +173,7 @@ var app = builder.Build();
 
 await DbInitializer.SeedAdminAsync(app);
 await DbInitializer.SeedVehicleCategories(app);
-app.UseCors("AllowLocalhost8000");
+//app.UseCors("AllowLocalhost8000");
 
 app.MapHub<NotificationHub>("/notificationHub");
 

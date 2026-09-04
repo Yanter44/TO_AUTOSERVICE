@@ -5,6 +5,6 @@ namespace ToMainApi.Models
     public class DocumentFiles
     {
         public string Type { get; set; }
-        public IFormFile Document { get; set; }
+        public string DocumentUrl { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 
@@ -146,6 +147,52 @@ namespace ToMainApi.Services
             {
                 Success = true,
                 Data = users
+            };
+        }
+        public async Task<ServiceResponse<PagedResponse<UserDto>>> GetUsers(PaginationDto paginationModel)
+        {
+            var query = _dbcontext.Users
+                .AsNoTracking()
+                .AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .Skip((paginationModel.Page - 1) * paginationModel.PageSize)
+                .Take(paginationModel.PageSize)
+                .ToListAsync();
+
+            var result = users.Select(x =>
+            {
+                var userDto = new UserDto
+                {
+                    UserId = x.Id,
+                    FIO = x.FIO,
+                    Email = x.Email,
+                    Role = x.RoleType,
+                    RegDate = x.RegDate
+                };
+
+                if (x.RoleType == "Agent" && x.AgentProfile?.Wallet != null)
+                {
+                    userDto.Balance = x.AgentProfile.Wallet.Balance;
+                    userDto.DebtLimit = x.AgentProfile.Wallet.DebtLimit;        
+                }
+
+                return userDto;
+            }).ToList();
+
+            return new ServiceResponse<PagedResponse<UserDto>>
+            {
+                Success = true,
+                Data = new PagedResponse<UserDto>
+                {
+                    Items = result,
+                    TotalCount = totalCount,
+                    Page = paginationModel.Page,
+                    PageSize = paginationModel.PageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / paginationModel.PageSize)
+                }
             };
         }
         public async Task<ServiceResponse<List<UserDto>>> GetAllUsersExcept(int currentUserId)

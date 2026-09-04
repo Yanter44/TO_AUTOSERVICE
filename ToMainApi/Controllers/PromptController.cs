@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
 using System.Security.Claims;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.Prompt;
+using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Enums;
 using ToMainApi.Services;
 
@@ -27,10 +29,24 @@ namespace ToMainApi.Controllers
         public async Task<IActionResult> GetAllPrompts()
         {
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _promtService.GetAllPrompts(userid);
+            var usercontext = new UserContextDto() { Id = userid };
+            var result = await _promtService.GetAllPrompts(usercontext);
             if (result.Success)
-                return Ok(result.Data);
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        
+        [Authorize(Roles = "Admin,Moderator")]
+        [HttpGet("GetPrompts")]
+        public async Task<IActionResult> GetPrompts([FromQuery] PaginationDto model)
+        {
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var usercontext = new UserContextDto() { Id = userid };
+            var result = await _promtService.GetPrompts(usercontext, model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin,Moderator")]

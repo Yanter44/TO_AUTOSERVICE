@@ -7,6 +7,7 @@
         public const string ApplicationRejected = nameof(ApplicationRejected);
         public const string ApplicationCreated = nameof(ApplicationCreated);
         public const string ApplicationApproved = nameof(ApplicationApproved);
+        public const string ApplicationProcessingError = nameof(ApplicationProcessingError);
 
         // === PAYMENTS ===
         public const string BalanceCredited = nameof(BalanceCredited); 

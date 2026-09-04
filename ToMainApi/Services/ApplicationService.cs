@@ -34,72 +34,101 @@ namespace ToMainApi.Services
             _mediator = mediator;
             _logger = logger;
         }
-        public async Task<ServiceResponse<bool>> CreateNewApplication(int UserId, CreateNewApplicationDto model)
+        public async Task CreateNewApplication(int UserId, CreateNewApplicationDto model)
         {
-            var agentId = await _dbcontext.AgentProfiles.Where(ap => ap.UserId == UserId)
-                                                        .Select(ap => ap.Id)
-                                                        .FirstOrDefaultAsync();
-            if (agentId == null)
+            try
             {
-                return new ServiceResponse<bool>
+                var agentId = await _dbcontext.AgentProfiles
+                    .Where(ap => ap.UserId == UserId)
+                    .Select(ap => ap.Id)
+                    .FirstOrDefaultAsync();
+
+                if (agentId == 0)
                 {
-                    Success = false,
-                    Message = "Профиль агента не найден в системе."
+                    var error = "Профиль агента не найден в системе";
+                    _logger.LogError("❌ {Error}. UserId: {UserId}", error, UserId);
+
+                    await _mediator.Publish(new ApplicationProcessingErrorEvent(
+                        0,
+                        UserId,
+                        error
+                    ));
+                    return;
+                }
+                var application = new Application
+                {
+                    AgentId = agentId,
+                    VehicleCategoryId = model.VehicleCategoryId,
+                    VIN = model.VIN,
+                    GosNumber = model.GosNumber,
+                    Brand = model.Brand,
+                    Model = model.Model,
+                    YearOfRelease = model.YearOfRelease,
+                    FIO = model.FIO,
+                    Email = model.Email,
+                    PhoneNumber = model.PhoneNumber,
+                    PtoId = model.PtoId,
+                    Documents = new List<ApplicationDocument>(),
+                    Photos = new List<ApplicationPhoto>(),
+                    Status = ApplicationStatus.Processing.ToString(),
+                    CreatedAt = DateTime.UtcNow
                 };
-            }
-            var application = new Application
-            {
-                AgentId = agentId,
-                VehicleCategoryId = model.VehicleCategoryId,
-                VIN = model.VIN,
-                GosNumber = model.GosNumber,
-                Brand = model.Brand,
-                Model = model.Model,
-                YearOfRelease = model.YearOfRelease,
-                FIO = model.FIO,
-                Email = model.Email,
-                PhoneNumber = model.PhoneNumber,
-                PtoId = model.PtoId,
-                Documents = new List<ApplicationDocument>(),
-                Photos = new List<ApplicationPhoto>(),
-                Status = Models.Enums.ApplicationStatus.Moderated.ToString(),
-                CreatedAt = DateTime.UtcNow
-            };
+                _dbcontext.Applications.Add(application);
+                await _dbcontext.SaveChangesAsync();
 
-            foreach (var document in model.DocumentFiles)
-            {
-                var url = await _cloudinaryService
-                    .UploadFileAsync(document.Document);
-
-                application.Documents.Add(new ApplicationDocument
+                var applicationId = application.Id;
+                foreach (var document in model.DocumentFiles)
                 {
-                    Type = document.Type,
-                    Url = url
-                });
-            }
-
-            foreach (var photo in model.VehiclePhotos)
-            {
-                var url = await _cloudinaryService
-                    .UploadImageAsync(photo.Photo);
-
-                application.Photos.Add(new ApplicationPhoto
+                    try
+                    {
+                        application.Documents.Add(new ApplicationDocument
+                        {
+                            Type = document.Type,
+                            Url = document.DocumentUrl
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ Ошибка загрузки документа. UserId: {UserId}", UserId);
+                        application.Status = ApplicationStatus.Error.ToString();
+                        await _dbcontext.SaveChangesAsync();
+                        await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки документа: {ex.Message}"));
+                        return;
+                    }
+                }
+                foreach (var photo in model.VehiclePhotos)
                 {
-                    VehiclePhotoType = photo.VehiclePhotoType,
-                    Url = url
-                });
+                    try
+                    {
+                        application.Photos.Add(new ApplicationPhoto
+                        {
+                            VehiclePhotoType = photo.VehiclePhotoType,
+                            Url = photo.PhotoUrl
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ Ошибка загрузки фото. UserId: {UserId}", UserId);
+                        application.Status = ApplicationStatus.Error.ToString();
+                        await _dbcontext.SaveChangesAsync();
+                        await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки фото: {ex.Message}"));
+                        return;
+                    }
+                }
+                application.Status = ApplicationStatus.Moderated.ToString();
+                await _dbcontext.SaveChangesAsync();
+                _logger.LogInformation("✅ Заявка {ApplicationId} успешно создана", applicationId);
+                await _mediator.Publish(new ApplicationCreatedEvent(applicationId, UserId));
             }
-
-            _dbcontext.Applications.Add(application);
-            await _dbcontext.SaveChangesAsync();
-
-            await _mediator.Publish(new ApplicationCreatedEvent(application.Id, UserId));
-
-            return new ServiceResponse<bool>
+            catch (Exception ex)
             {
-                Success = true,
-                Data = true
-            };
+                _logger.LogError(ex, "❌ Критическая ошибка при создании заявки. UserId: {UserId}", UserId);
+                await _mediator.Publish(new ApplicationProcessingErrorEvent(
+                    0,
+                    UserId,
+                    $"Внутренняя ошибка: {ex.Message}"
+                ));
+            }
         }
         public async Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel)
         {

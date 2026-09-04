@@ -11,7 +11,7 @@ namespace ToMainApi.Interfaces
     {
         Task<ServiceResponse<PagedResponse<ApplicationDto>>> GetApplications(UserContextDto userContext, PaginationDto pagination);
         Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel);
-        Task<ServiceResponse<bool>> CreateNewApplication(int UserId, CreateNewApplicationDto model );
+        Task CreateNewApplication(int UserId, CreateNewApplicationDto model);
         Task<ServiceResponse<bool>> DeleteApplication(DeleteApplicationDto model);
     }
 }
