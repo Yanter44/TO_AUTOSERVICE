@@ -58,14 +58,6 @@ namespace ToMainApi.Controllers
             return BadRequest(result);
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpPost("ChangeUserDebtLimit")]
-        public async Task<IActionResult> ChangeUserDebtLimit([FromBody] ChangeUserDebtLimitDto model)
-        {
-        //    var result = await _adminService.
-            return Ok();
-        }
-
         [HttpPost("AddTextToPhoto")]
         public async Task<IActionResult> AddTextToPhoto(IFormFile photo)
         {

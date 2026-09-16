@@ -14,6 +14,36 @@ namespace ToMainApi.Services
         {
             _dbContext = dbContext;
         }
+        public async Task<ServiceResponse<PhotoRequireDto>> EditPhotoRequirement(EditPhotoRequirementDto model)
+        {
+            var existRequirement = await _dbContext.PhotoUploadRequires.AsNoTracking().FirstOrDefaultAsync(x => x.Id == model.Id);
+            if (existRequirement != null)
+            {
+
+                existRequirement.IsRequire = model.IsRequire;
+                existRequirement.DisplayName = model.DisplayName;
+                existRequirement.PhotoType = model.PhotoType;
+                await _dbContext.SaveChangesAsync();
+                var returnmodel = new PhotoRequireDto()
+                {
+                    Id = existRequirement.Id,
+                    DisplayName = existRequirement.DisplayName,
+                    PhotoType = model.PhotoType,
+                    IsRequire = existRequirement.IsRequire,
+                };
+                return new ServiceResponse<PhotoRequireDto>()
+                {
+                    Data = returnmodel,
+                    Success = true,
+                    Message = "Успешно изменено требование"
+                };
+            }
+            return new ServiceResponse<PhotoRequireDto>()
+            {
+                Success = false,
+                Message = "Не удалось применить изменение к требованию"
+            };
+        }
         public async Task<ServiceResponse<List<PhotoRequireDto>>> GetAllPhotoRequirements()
         {
             var allrequirements = await _dbContext.PhotoUploadRequires.AsNoTracking().ToListAsync();

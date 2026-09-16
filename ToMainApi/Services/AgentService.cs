@@ -33,7 +33,6 @@ namespace ToMainApi.Services
                 var dto = new AgentDto
                 {
                     FIO = existUser.FIO,
-                    //Role = existUser.RoleType.ToString()
                 };
                 return new ServiceResponse<AgentDto>
                 {
@@ -55,16 +54,16 @@ namespace ToMainApi.Services
                 return new ServiceResponse<decimal>
                 {
                     Success = false,
-                    Message = "Кошелек не найден"
+                    Message = "Кошелёк не найден"
                 };
             }
 
             var balance = await _dbcontext.Transactions
-                .Where(x => x.WalletId == walletId)
-                .SumAsync(x =>
-                    x.TransactionType == TransactionType.Credit.ToString()
-                        ? x.Amount
-                        : -x.Amount);
+                   .Where(x => x.WalletId == walletId 
+                         && x.TransactionStatus == TransactionStatus.Completed.ToString())
+                   .SumAsync(x => x.TransactionType == TransactionType.Credit.ToString()
+                   ? x.Amount
+                   : -x.Amount);
 
             return new ServiceResponse<decimal>
             {
@@ -149,7 +148,7 @@ namespace ToMainApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка получения истории транзакций. UserId: {UserId}", userContext.Id);
+                _logger.LogError(ex, "Ошибка получения истории транзакций. UserId: {UserId}", userContext.Id);
                 return new ServiceResponse<PagedResponse<AgentTransactionDto>>
                 {
                     Success = false,

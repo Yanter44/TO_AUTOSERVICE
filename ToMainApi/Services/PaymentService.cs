@@ -2,8 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
-using ToMainApi.Features.Application.Events.Applications;
-using ToMainApi.Features.Application.Events.Payments;
+using ToMainApi.Features.Events.Payments;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Application;
 using ToMainApi.Models.Dtos.Pagination;
@@ -31,7 +30,6 @@ namespace ToMainApi.Services
         public async Task<ServiceResponse<bool>> Credit(CreditRequest request)
         {
             using var dbTransaction = await _dbcontext.Database.BeginTransactionAsync();
-
             try
             {
                 var wallet = await _dbcontext.Users
@@ -213,12 +211,33 @@ namespace ToMainApi.Services
                 Success = true
             };
         }
-        public async Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(PaginationDto paginationModel)
+        public async Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(TransactionFilterDto filter)
         {
             try
             {
-                var query = _dbcontext.Transactions
-                    .AsNoTracking()
+                var query = _dbcontext.Transactions.AsNoTracking();
+
+                if (filter.DateFrom.HasValue)
+                    query = query.Where(x => x.CreatedAt >= filter.DateFrom.Value);
+
+                if (filter.DateTo.HasValue)
+                {
+                    var endExclusive = filter.DateTo.Value.Date.AddDays(1);
+                    query = query.Where(x => x.CreatedAt < endExclusive);
+                }
+
+                if (!string.IsNullOrWhiteSpace(filter.Status))
+                    query = query.Where(x => x.TransactionStatus == filter.Status);
+
+                if (!string.IsNullOrWhiteSpace(filter.Type))
+                    query = query.Where(x => x.TransactionType == filter.Type);
+
+                var totalCount = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Skip((filter.Page - 1) * filter.PageSize)
+                    .Take(filter.PageSize)
                     .Select(x => new TransactionDto
                     {
                         ExternalId = x.ExternalId.ToString(),
@@ -228,14 +247,7 @@ namespace ToMainApi.Services
                         TransactionStatus = x.TransactionStatus,
                         Description = x.Description,
                         CreatedAt = x.CreatedAt
-                    });
-
-                var totalCount = await _dbcontext.Transactions.CountAsync();
-
-                var result = await query
-                    .OrderByDescending(x => x.CreatedAt)
-                    .Skip((paginationModel.Page - 1) * paginationModel.PageSize)
-                    .Take(paginationModel.PageSize)
+                    })
                     .ToListAsync();
 
                 return new ServiceResponse<PagedResponse<TransactionDto>>
@@ -243,11 +255,11 @@ namespace ToMainApi.Services
                     Success = true,
                     Data = new PagedResponse<TransactionDto>
                     {
-                        Items = result,
+                        Items = items,
                         TotalCount = totalCount,
-                        Page = paginationModel.Page,
-                        PageSize = paginationModel.PageSize,
-                        TotalPages = (int)Math.Ceiling((double)totalCount / paginationModel.PageSize)
+                        Page = filter.Page,
+                        PageSize = filter.PageSize,
+                        TotalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize)
                     }
                 };
             }

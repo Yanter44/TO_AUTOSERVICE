@@ -67,6 +67,26 @@ namespace ToMainApi.Controllers
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpPut("EditPhotoRequirement")]
+        public async Task <IActionResult> EditPhotoRequirement([FromBody] EditPhotoRequirementDto model)
+        {
+            var result = await _photoRequirementService.EditPhotoRequirement(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("EditDocumentRequirement")]
+        public async Task <IActionResult> EditDocumentRequirement([FromBody] EditDocumentRequirementDto model)
+        {
+            var result = await _documentRequirementService.EditDocumentRequirement(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+
+        }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("DeleteDocumentRequirement")]
         public async Task<IActionResult> DeleteDocumentRequirement([FromQuery] int documentRequirementId)
         {

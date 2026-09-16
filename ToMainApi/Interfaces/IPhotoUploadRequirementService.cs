@@ -7,6 +7,7 @@ namespace ToMainApi.Interfaces
     {
         Task<ServiceResponse<List<PhotoRequireDto>>> GetAllPhotoRequirements();
         Task<ServiceResponse<PhotoRequireDto>> AddPhotoRequirement(AddPhotoRequirementDto model);
+        Task<ServiceResponse<PhotoRequireDto>> EditPhotoRequirement(EditPhotoRequirementDto model);
         Task<ServiceResponse<bool>> DeletePhotoRequirement(int photorequirementId);
     }
 }

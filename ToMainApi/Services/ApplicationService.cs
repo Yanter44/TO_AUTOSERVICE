@@ -4,8 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
-using ToMainApi.Features.Application.Events;
-using ToMainApi.Features.Application.Events.Applications;
+using ToMainApi.Features.Events.Applications;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
 using ToMainApi.Models.Dtos.Application;
@@ -21,38 +20,130 @@ namespace ToMainApi.Services
     public class ApplicationService : IApplicationService
     {
         private readonly AppDbContext _dbcontext;
-        private readonly ICloudinaryService _cloudinaryService;
+        private readonly IApplicationChargeService _applicationChargeService;
         private readonly IMediator _mediator;
         private readonly ILogger<ApplicationService> _logger;
-        public ApplicationService(AppDbContext dbcontext, 
-            ICloudinaryService cloudinaryService,
+        public ApplicationService(AppDbContext dbcontext,
+            IApplicationChargeService applicationChargeService,
             IMediator mediator,
             ILogger<ApplicationService> logger)
         {
             _dbcontext = dbcontext;
-            _cloudinaryService = cloudinaryService;
+            _applicationChargeService = applicationChargeService;
             _mediator = mediator;
             _logger = logger;
+
         }
-        public async Task CreateNewApplication(int UserId, CreateNewApplicationDto model)
+        //public async Task CreateNewApplication(int UserId, CreateNewApplicationDto model)
+        //{
+        //    try
+        //    {
+        //        var agentId = await _dbcontext.AgentProfiles
+        //            .Where(ap => ap.UserId == UserId)
+        //            .Select(ap => ap.Id)
+        //            .FirstOrDefaultAsync();
+
+        //        if (agentId == 0)
+        //        {
+        //            var error = "Профиль агента не найден в системе";
+        //            _logger.LogError("{Error}. UserId: {UserId}", error, UserId);
+
+        //            await _mediator.Publish(new ApplicationProcessingErrorEvent(0, UserId, error));
+        //            return;
+        //        }
+        //        var application = new Application
+        //        {
+        //            AgentId = agentId,
+        //            VehicleCategoryId = model.VehicleCategoryId,
+        //            VIN = model.VIN,
+        //            GosNumber = model.GosNumber,
+        //            Brand = model.Brand,
+        //            Model = model.Model,
+        //            YearOfRelease = model.YearOfRelease,
+        //            FIO = model.FIO,
+        //            Email = model.Email,
+        //            PhoneNumber = model.PhoneNumber,
+        //            PtoId = model.PtoId,
+        //            Documents = new List<ApplicationDocument>(),
+        //            Photos = new List<ApplicationPhoto>(),
+        //            Status = ApplicationStatus.Processing.ToString(),
+        //            CreatedAt = DateTime.UtcNow
+        //        };
+        //        _dbcontext.Applications.Add(application);
+        //        await _dbcontext.SaveChangesAsync();
+
+        //        var applicationId = application.Id;
+        //        foreach (var document in model.DocumentFiles)
+        //        {
+        //            try
+        //            {
+        //                application.Documents.Add(new ApplicationDocument
+        //                {
+        //                    Type = document.Type,
+        //                    Url = document.DocumentUrl
+        //                });
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogError(ex, "Ошибка загрузки документа. UserId: {UserId}", UserId);
+        //                application.Status = ApplicationStatus.Error.ToString();
+        //                await _dbcontext.SaveChangesAsync();
+        //                await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки документа: {ex.Message}"));
+        //                return;
+        //            }
+        //        }
+        //        foreach (var photo in model.VehiclePhotos)
+        //        {
+        //            try
+        //            {
+        //                application.Photos.Add(new ApplicationPhoto
+        //                {
+        //                    VehiclePhotoType = photo.VehiclePhotoType,
+        //                    Url = photo.PhotoUrl
+        //                });
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogError(ex, "Ошибка загрузки фото. UserId: {UserId}", UserId);
+        //                application.Status = ApplicationStatus.Error.ToString();
+        //                await _dbcontext.SaveChangesAsync();
+        //                await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки фото: {ex.Message}"));
+        //                return;
+        //            }
+        //        }
+        //        application.Status = ApplicationStatus.Moderated.ToString();
+        //        await _dbcontext.SaveChangesAsync();
+        //        _logger.LogInformation("Заявка {ApplicationId} успешно создана", applicationId);
+        //        await _mediator.Publish(new ApplicationCreatedEvent(applicationId, UserId));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Критическая ошибка при создании заявки. UserId: {UserId}", UserId);
+        //        await _mediator.Publish(new ApplicationProcessingErrorEvent(
+        //            0,
+        //            UserId,
+        //            $"Внутренняя ошибка: {ex.Message}"
+        //        ));
+        //    }
+        //}
+        public async Task CreateNewApplication(int userId, CreateNewApplicationDto model)
         {
+            using var transaction = await _dbcontext.Database.BeginTransactionAsync();
+
             try
             {
+                // 1. Проверить агента
                 var agentId = await _dbcontext.AgentProfiles
-                    .Where(ap => ap.UserId == UserId)
+                    .Where(ap => ap.UserId == userId)
                     .Select(ap => ap.Id)
                     .FirstOrDefaultAsync();
 
                 if (agentId == 0)
                 {
+                    await transaction.RollbackAsync();
                     var error = "Профиль агента не найден в системе";
-                    _logger.LogError("❌ {Error}. UserId: {UserId}", error, UserId);
-
-                    await _mediator.Publish(new ApplicationProcessingErrorEvent(
-                        0,
-                        UserId,
-                        error
-                    ));
+                    _logger.LogError("{Error}. UserId: {UserId}", error, userId);
+                    await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, error));
                     return;
                 }
                 var application = new Application
@@ -73,63 +164,56 @@ namespace ToMainApi.Services
                     Status = ApplicationStatus.Processing.ToString(),
                     CreatedAt = DateTime.UtcNow
                 };
+
                 _dbcontext.Applications.Add(application);
                 await _dbcontext.SaveChangesAsync();
 
                 var applicationId = application.Id;
-                foreach (var document in model.DocumentFiles)
+                foreach (var doc in model.DocumentFiles)
                 {
-                    try
+                    application.Documents.Add(new ApplicationDocument
                     {
-                        application.Documents.Add(new ApplicationDocument
-                        {
-                            Type = document.Type,
-                            Url = document.DocumentUrl
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "❌ Ошибка загрузки документа. UserId: {UserId}", UserId);
-                        application.Status = ApplicationStatus.Error.ToString();
-                        await _dbcontext.SaveChangesAsync();
-                        await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки документа: {ex.Message}"));
-                        return;
-                    }
+                        Type = doc.Type,
+                        Url = doc.DocumentUrl
+                    });
                 }
+
                 foreach (var photo in model.VehiclePhotos)
                 {
-                    try
+                    application.Photos.Add(new ApplicationPhoto
                     {
-                        application.Photos.Add(new ApplicationPhoto
-                        {
-                            VehiclePhotoType = photo.VehiclePhotoType,
-                            Url = photo.PhotoUrl
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "❌ Ошибка загрузки фото. UserId: {UserId}", UserId);
-                        application.Status = ApplicationStatus.Error.ToString();
-                        await _dbcontext.SaveChangesAsync();
-                        await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки фото: {ex.Message}"));
-                        return;
-                    }
+                        VehiclePhotoType = photo.VehiclePhotoType,
+                        Url = photo.PhotoUrl
+                    });
+                }
+
+                await _dbcontext.SaveChangesAsync();
+
+                var chargeResult = await _applicationChargeService
+                    .ChargeForApplication(applicationId, userId);
+
+                if (!chargeResult.Success)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogWarning("Заявка не создана: {Message}", chargeResult.Message);
+                    await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, chargeResult.Message));
+                    return;         
                 }
                 application.Status = ApplicationStatus.Moderated.ToString();
                 await _dbcontext.SaveChangesAsync();
-                _logger.LogInformation("✅ Заявка {ApplicationId} успешно создана", applicationId);
-                await _mediator.Publish(new ApplicationCreatedEvent(applicationId, UserId));
+                await transaction.CommitAsync();
+                _logger.LogInformation("Заявка {Id} создана и оплачена", applicationId);
+                await _mediator.Publish(new ApplicationCreatedEvent(applicationId, userId));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Критическая ошибка при создании заявки. UserId: {UserId}", UserId);
-                await _mediator.Publish(new ApplicationProcessingErrorEvent(
-                    0,
-                    UserId,
-                    $"Внутренняя ошибка: {ex.Message}"
-                ));
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Критическая ошибка. UserId: {UserId}", userId);
+                await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, ex.Message));
+                
             }
         }
+    
         public async Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel)
         {
             var query = _dbcontext.Applications.AsQueryable();

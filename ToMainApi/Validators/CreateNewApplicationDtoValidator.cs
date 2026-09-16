@@ -32,7 +32,7 @@ namespace ToMainApi.Validators
             RuleFor(x => x.DocumentFiles)
                 .NotNull()
                 .Must(x => x.Count > 0)
-                .WithMessage("Должно быть не менее одной фотографии");
+                .WithMessage("Должно быть 1 или более документов");
 
             RuleFor(x => x.FIO)
                 .NotEmpty()

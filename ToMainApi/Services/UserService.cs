@@ -12,9 +12,12 @@ namespace ToMainApi.Services
     public class UserService : IUserService
     {
         private readonly AppDbContext _dbcontext;
-        public UserService(AppDbContext dbcontext)
+        private readonly ILogger<UserService> _logger;
+
+        public UserService(AppDbContext dbcontext, ILogger<UserService> logger)
         {
             _dbcontext = dbcontext;
+            _logger = logger;
         }
         public async Task<ServiceResponse<AgentDto>> GetAgentByUserId(int userId)
         {
@@ -149,11 +152,14 @@ namespace ToMainApi.Services
                 Data = users
             };
         }
+       
         public async Task<ServiceResponse<PagedResponse<UserDto>>> GetUsers(PaginationDto paginationModel)
         {
             var query = _dbcontext.Users
                 .AsNoTracking()
-                .AsQueryable();
+                .AsQueryable()
+                .Include(x => x.AgentProfile)
+                .ThenInclude(x => x.Wallet);
 
             var totalCount = await query.CountAsync();
 
@@ -275,7 +281,190 @@ namespace ToMainApi.Services
                 })
                 .ToListAsync();
         }
+        public async Task<ServiceResponse<bool>> BlockUser(UserContextDto userContext, BlockUserDto model)
+        {
+            try
+            {
+                if (userContext?.Id == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Не удалось определить текущего пользователя" };
 
+                if (model.BlockUserId == userContext.Id.Value)
+                    return new ServiceResponse<bool> { Success = false, Message = "Нельзя заблокировать самого себя" };
+
+                var user = await _dbcontext.Users
+                    .Include(u => u.Status)
+                    .FirstOrDefaultAsync(u => u.Id == model.BlockUserId);
+
+                if (user == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Пользователь не найден" };
+
+                if (user.Status == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Профиль статуса не найден" };
+
+                if (user.Status.IsBlocked)
+                    return new ServiceResponse<bool> { Success = false, Message = "Пользователь уже заблокирован" };
+
+                var now = DateTime.UtcNow;
+
+                var block = new UserBlocks
+                {
+                    UserId = model.BlockUserId,
+                    BlockedByUserId = userContext.Id.Value,
+                    Reason = model.Reason,
+                    BlockedAt = now,
+                    BlockedUntil = model.BlockUntil,
+
+                    UnblockedByUserId = null,
+                    UnblockedAt = null,
+                    UnblockReason = null
+                };
+
+                _dbcontext.UserBlocks.Add(block);
+                user.Status.IsBlocked = true;
+                user.Status.BlockedUntil = model.BlockUntil;
+
+                await _dbcontext.SaveChangesAsync();
+
+                return new ServiceResponse<bool> { Success = true, Data = true, Message = "Пользователь заблокирован" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка блокировки пользователя {UserId}", model.BlockUserId);
+                return new ServiceResponse<bool> { Success = false, Message = "Внутренняя ошибка" };
+            }
+        }
+        public async Task<ServiceResponse<bool>> UnblockUser(UserContextDto userContext, UnblockUserDto model)
+        {
+            try
+            {
+                if (userContext?.Id == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Не удалось определить текущего пользователя" };
+
+                var user = await _dbcontext.Users
+                    .Include(u => u.Status)
+                    .FirstOrDefaultAsync(u => u.Id == model.UnblockUserId);
+
+                if (user == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Пользователь не найден" };
+
+                if (user.Status == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Профиль статуса не найден" };
+
+                if (!user.Status.IsBlocked)
+                    return new ServiceResponse<bool> { Success = false, Message = "Пользователь не заблокирован" };
+
+                var activeBlock = await _dbcontext.UserBlocks
+                    .Where(b => b.UserId == model.UnblockUserId && b.UnblockedAt == null)
+                    .OrderByDescending(b => b.BlockedAt)
+                    .FirstOrDefaultAsync();
+
+                if (activeBlock == null)
+                    return new ServiceResponse<bool> { Success = false, Message = "Активная блокировка не найдена" };
+
+                var now = DateTime.UtcNow;
+
+                activeBlock.UnblockedByUserId = userContext.Id.Value;
+                activeBlock.UnblockedAt = now;
+                activeBlock.UnblockReason = model.UnblockReason;
+
+                user.Status.IsBlocked = false;
+                user.Status.BlockedUntil = null;
+
+                await _dbcontext.SaveChangesAsync();
+
+                return new ServiceResponse<bool> { Success = true, Data = true, Message = "Пользователь разблокирован" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка разблокировки пользователя {UserId}", model.UnblockUserId);
+                return new ServiceResponse<bool> { Success = false, Message = "Внутренняя ошибка" };
+            }
+        }
+        public async Task<ServiceResponse<bool>> ChangeUserDebtLimit(ChangeUserDebtLimitDto model)
+        {
+            var wallet = await _dbcontext.Wallets
+                .FirstOrDefaultAsync(w => w.Agent.UserId == model.UserId);
+
+            if (wallet == null)
+                return new ServiceResponse<bool> { Success = false, Message = "Кошелёк не найден" };
+
+            if (model.DebtLimit < 0)
+                return new ServiceResponse<bool> { Success = false, Message = "Лимит не может быть отрицательным" };
+
+            if (wallet.CurrentDebt > model.DebtLimit)
+                return new ServiceResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Новый лимит меньше текущего долга ({wallet.CurrentDebt} ₽)"
+                };
+
+            wallet.DebtLimit = model.DebtLimit;
+            await _dbcontext.SaveChangesAsync();
+
+            return new ServiceResponse<bool> { Success = true, Data = true };
+        }
+        public async Task<ServiceResponse<List<UserBlockHistoryDto>>> GetUserBlockHistory(int userId)
+        {
+            try
+            {
+                var userExists = await _dbcontext.Users
+                    .AsNoTracking()
+                    .AnyAsync(u => u.Id == userId);
+
+                if (!userExists)
+                    return new ServiceResponse<List<UserBlockHistoryDto>>
+                    {
+                        Success = false,
+                        Message = "Пользователь не найден"
+                    };
+
+                var now = DateTime.UtcNow;
+
+                var history = await _dbcontext.UserBlocks
+                    .AsNoTracking()
+                    .Where(b => b.UserId == userId)
+                    .OrderByDescending(b => b.BlockedAt)
+                    .Select(b => new UserBlockHistoryDto
+                    {
+                        Id = b.Id,
+
+                        BlockedAt = b.BlockedAt,
+                        Reason = b.Reason,
+                        BlockedByUserId = b.BlockedByUserId,
+                        BlockedByFIO = b.BlockedBy.FIO,
+                        BlockedUntil = b.BlockedUntil,
+
+                        UnblockedAt = b.UnblockedAt,
+                        UnblockReason = b.UnblockReason,
+                        UnblockedByUserId = b.UnblockedByUserId,
+                        UnblockedByFIO = b.UnblockedBy != null ? b.UnblockedBy.FIO : null,
+
+                        IsActive = b.UnblockedAt == null
+                                && (b.BlockedUntil == null || b.BlockedUntil > now),
+
+                        IsPermanent = b.BlockedUntil == null,
+
+                        WasAutoUnblocked = b.UnblockedAt != null && b.UnblockedByUserId == null
+                    })
+                    .ToListAsync();
+
+                return new ServiceResponse<List<UserBlockHistoryDto>>
+                {
+                    Success = true,
+                    Data = history,
+                    Message = $"Найдено записей: {history.Count}"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка получения истории блокировок пользователя {UserId}", userId);
+                return new ServiceResponse<List<UserBlockHistoryDto>>
+                {
+                    Success = false,
+                    Message = "Внутренняя ошибка"
+                };
+            }
+        }
 
     }
 }

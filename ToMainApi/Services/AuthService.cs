@@ -95,7 +95,7 @@ namespace ToMainApi.Services
                 issuer: secretissuer,
                 audience: secretaudience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(1),
+                expires: DateTime.UtcNow.AddMinutes(30),
                 signingCredentials: creds
             );
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
@@ -123,7 +123,7 @@ namespace ToMainApi.Services
                 issuer: secretissuer,      
                 audience: secretaudience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(1),
+                expires: DateTime.UtcNow.AddMinutes(30),
                 signingCredentials: creds
             );
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);

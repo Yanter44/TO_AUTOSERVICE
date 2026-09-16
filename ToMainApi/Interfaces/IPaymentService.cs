@@ -7,7 +7,7 @@ namespace ToMainApi.Interfaces
     public interface IPaymentService
     {
         Task<ServiceResponse<List<TransactionDto>>> GetAllTransactions();
-        Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(PaginationDto paginationModel);
+        Task<ServiceResponse<PagedResponse<TransactionDto>>> GetTransactions(TransactionFilterDto filter);
         Task<ServiceResponse<bool>> Credit(CreditRequest request);
         Task<ServiceResponse<bool>> Debit(DebitRequest request);
     }

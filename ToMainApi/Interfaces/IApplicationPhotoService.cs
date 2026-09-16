@@ -1,4 +1,5 @@
 ﻿using ToMainApi.Common;
+using ToMainApi.Models.Dtos.Ai;
 using ToMainApi.Models.Dtos.ApplicationPhoto;
 
 namespace ToMainApi.Interfaces
@@ -8,5 +9,6 @@ namespace ToMainApi.Interfaces
         Task<ServiceResponse<List<ApplicationPhotoDto>>> GetAllApplicationPhotos();
         Task<ServiceResponse<ApplicationPhotoDto>> GetApplicationPhotoByApplicationIdAndPhotoId(int applicationId, int photoId);
         Task<ServiceResponse<List<ApplicationPhotoDto>>> GetApplicationPhotosByApplicationId(int applicationId);
+        Task<ServiceResponse<bool>> ConfirmGeneratedPhoto(ConfirmAIGeneratedPhotoDto model);
     }
 }

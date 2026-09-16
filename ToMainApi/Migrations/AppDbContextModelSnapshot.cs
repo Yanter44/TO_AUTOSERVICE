@@ -456,6 +456,32 @@ namespace ToMainApi.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.RouteAINeuronNetwork", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Link")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RouteAINeuronNetworks");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.Transaction", b =>
                 {
                     b.Property<int>("Id")
@@ -541,6 +567,86 @@ namespace ToMainApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserBlocks", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("BlockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("BlockedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("BlockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("UnblockReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UnblockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UnblockedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedAt");
+
+                    b.HasIndex("BlockedByUserId");
+
+                    b.HasIndex("UnblockedByUserId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "UnblockedAt");
+
+                    b.ToTable("UserBlocks");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("BlockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsBlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsBlocked");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserStatuses");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.VehicleCategory", b =>
@@ -751,6 +857,43 @@ namespace ToMainApi.Migrations
                     b.Navigation("Wallet");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserBlocks", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.User", "BlockedBy")
+                        .WithMany()
+                        .HasForeignKey("BlockedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ToMainApi.Models.Entities.User", "UnblockedBy")
+                        .WithMany()
+                        .HasForeignKey("UnblockedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ToMainApi.Models.Entities.User", "User")
+                        .WithMany("Blocks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BlockedBy");
+
+                    b.Navigation("UnblockedBy");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserStatus", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.User", "User")
+                        .WithOne("Status")
+                        .HasForeignKey("ToMainApi.Models.Entities.UserStatus", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.Wallet", b =>
                 {
                     b.HasOne("ToMainApi.Models.Entities.AgentProfile", "Agent")
@@ -798,7 +941,12 @@ namespace ToMainApi.Migrations
                     b.Navigation("AgentProfile")
                         .IsRequired();
 
+                    b.Navigation("Blocks");
+
                     b.Navigation("ModeratorProfile")
+                        .IsRequired();
+
+                    b.Navigation("Status")
                         .IsRequired();
                 });
 

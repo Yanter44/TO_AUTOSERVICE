@@ -5,6 +5,6 @@
         public int Id { get; set; }
         public string PhotoType { get; set; } 
         public string DisplayName { get; set; }
-        public bool IsRequire { get; set; }
+        public bool IsRequire { get; set; } 
     }
 }

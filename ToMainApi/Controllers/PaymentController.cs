@@ -48,7 +48,7 @@ namespace ToMainApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("GetTransactions")]
-        public async Task<IActionResult> GetTransactions([FromQuery] PaginationDto model)
+        public async Task<IActionResult> GetTransactions([FromQuery] TransactionFilterDto  model)
         {
             var result = await _paymentService.GetTransactions(model);
             if (result.Success)

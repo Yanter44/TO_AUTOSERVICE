@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using ToMainApi.Interfaces;
+using ToMainApi.Models.Dtos.Admin;
 using ToMainApi.Models.Dtos.Ai;
 using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.User;
@@ -52,6 +53,7 @@ namespace ToMainApi.Controllers
 
             return BadRequest(result.Message);
         }
+
         [Authorize(Roles = "Admin")]
         [HttpGet("GetAllAgents")]
         public async Task<IActionResult> GetAllAgents()
@@ -70,12 +72,55 @@ namespace ToMainApi.Controllers
                 .Select(x => new UserRoleDto { Id = x, Name = x.ToString() }).ToList();
             return Ok(roles);
         }
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("DeleteUser")]
-        public async Task<IActionResult> DeleteUser([FromQuery] int userId)
-        {
 
-            return Ok();
+        [Authorize(Roles = "Admin")]
+        [HttpPost("BlockUser")]
+        public async Task<IActionResult> BlockUser([FromBody] BlockUserDto model)
+        {
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userrole = (User.FindFirst(ClaimTypes.Role)?.Value);
+            var usercontext = new UserContextDto() { Id = userid, Role = userrole };
+            var result = await _userService.BlockUser(usercontext, model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetUserBlocksHistory")]
+        public async Task<IActionResult> GetUserBlocksHistory([FromQuery] int userId)
+        {
+            var result = await _userService.GetUserBlockHistory(userId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("UnblockUser")]
+        public async Task<IActionResult> UnblockUser([FromBody] UnblockUserDto model)
+        {
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userrole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            var usercontext = new UserContextDto() { Id = userid, Role = userrole };
+
+            var result = await _userService.UnblockUser(usercontext, model);
+
+            if (result.Success)
+                return Ok(result);
+
+            return BadRequest(result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("ChangeUserDebtLimit")]
+        public async Task<IActionResult> ChangeUserDebtLimit([FromBody] ChangeUserDebtLimitDto model)
+        {
+            var result = await _userService.ChangeUserDebtLimit(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

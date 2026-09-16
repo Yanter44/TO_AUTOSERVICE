@@ -7,10 +7,11 @@
         public string Email { get; set; }
         public string Password { get; set; }
         public string RoleType { get; set; }
+        public UserStatus Status { get; set; }
+        public List<UserBlocks> Blocks { get; set; } = new();
         public AgentProfile AgentProfile { get; set; }
         public ModeratorProfile ModeratorProfile { get; set; }
         public AdminProfile AdminProfile { get; set; }
-
         public DateTime RegDate { get; set; }
     }
 }

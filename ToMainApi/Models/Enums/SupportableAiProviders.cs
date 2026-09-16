@@ -2,7 +2,7 @@
 {
     public enum SupportableAiProviders
     {
-        NanoBanana,
+        Gemini,
         ReveAi,
     }
 }

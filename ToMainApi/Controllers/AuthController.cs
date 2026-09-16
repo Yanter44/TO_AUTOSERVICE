@@ -46,7 +46,7 @@ namespace ToMainApi.Controllers
             var result = await _authservice.LoginUser(user);
             if (result.Success)
             {
-                Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(1)));
+                Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
                 Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
 
                 return Ok(new { message = "Успешный вход" });
@@ -80,7 +80,7 @@ namespace ToMainApi.Controllers
             if (!result.Success)
                 return BadRequest(result.Message);
 
-            Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(50)));
+            Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
             Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
             return Ok(new { message = "Регистрация успешна" });
         }
@@ -97,7 +97,7 @@ namespace ToMainApi.Controllers
             {
                 var userdtoresult = await _userService.GetUserById(checkRefreshTokenResult.Data);
                 var resultJwt = await _authservice.CreateAccessToken(userdtoresult.Data);
-                Response.Cookies.Append("jwt", resultJwt.Data, GetCookieOptions(TimeSpan.FromMinutes(50)));
+                Response.Cookies.Append("jwt", resultJwt.Data, GetCookieOptions(TimeSpan.FromMinutes(30)));
                 return Ok();
             }
             return Unauthorized();         

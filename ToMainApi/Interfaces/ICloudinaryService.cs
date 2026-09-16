@@ -1,4 +1,5 @@
-﻿using ToMainApi.Models.Cloudinary;
+﻿using ToMainApi.Common;
+using ToMainApi.Models.Cloudinary;
 using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Interfaces
@@ -7,7 +8,9 @@ namespace ToMainApi.Interfaces
     {
         Task<string> UploadFileAsync(IFormFile file);
         Task<string> UploadImageAsync(IFormFile file);
-        Task<MemoryStream> DownloadPhotoAsStreamAsync(string photoUrl);
+        Task<ServiceResponse<string>> UploadImageAsync(string base64Image);
+        Task<ServiceResponse<bool>> DeleteImageByUrl(string photoUrl);
+        Task<ServiceResponse<MemoryStream>> DownloadPhotoAsStreamAsync(string photoUrl);
         Task<CloudinarySignatureResponse> GenerateSignatureAsync(int userId, CloudinarySignatureRequest request);
     }
 }

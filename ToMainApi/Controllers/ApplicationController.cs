@@ -65,26 +65,37 @@ namespace ToMainApi.Controllers
 
         [Authorize(Roles = "Agent")]
         [HttpPost("CreateNewApplication")]
-        public async Task<IActionResult> CreateNewApplication([FromForm][Bind(Prefix = "")] CreateNewApplicationDto model)
+        public async Task<IActionResult> CreateNewApplication([FromBody] CreateNewApplicationDto model)
         {
+            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
                 return BadRequest(new ServiceResponse<bool>() { Success = false, Message = $"Ошибка валидации [{errors}]" });
             }
 
+            var started = new TaskCompletionSource<bool>();
+
             _ = Task.Run(async () =>
             {
                 using var scope = _scopeFactory.CreateScope();
-                var applicationService = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-                var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-                 await applicationService.CreateNewApplication(userid, model);
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationController>>();
+                started.SetResult(true);
+                try
+                {
+                    var applicationService = scope.ServiceProvider.GetRequiredService<IApplicationService>();
+                    await applicationService.CreateNewApplication(userid, model);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Ошибка фонового создания заявки");
+                }
             });
-
-            return Ok(new ServiceResponse<bool>()
+            await started.Task;
+            return Ok(new ServiceResponse<bool>
             {
                 Success = true,
-                Message = "Заявка успешно отправлена на обработку"
+                Message = "Заявка отправлена на обработку"
             });
         }
 

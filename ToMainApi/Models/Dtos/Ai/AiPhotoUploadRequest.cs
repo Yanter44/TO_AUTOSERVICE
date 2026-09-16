@@ -6,7 +6,7 @@ namespace ToMainApi.Models.Dtos.Ai
     {
         public int ApplicationId { get; set; }
         public int PhotoId { get; set; }
-        public SupportableAiProviders AiProvider { get; set; }
+        public int NeuronNetworkId { get; set; }
         public List<int> PromptsIds { get; set; }
     }
 }

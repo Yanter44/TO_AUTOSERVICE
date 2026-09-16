@@ -14,6 +14,37 @@ namespace ToMainApi.Services
         {
             _dbContext = dbContext;
         }
+
+        public async Task<ServiceResponse<DocumentRequireDto>> EditDocumentRequirement(EditDocumentRequirementDto model)
+        {
+            var existRequirement = await _dbContext.DocumentUploadRequires.AsNoTracking().FirstOrDefaultAsync(x => x.Id == model.Id);
+            if(existRequirement != null)
+            {
+                
+                existRequirement.IsRequire = model.IsRequire;
+                existRequirement.DisplayName = model.DisplayName;
+                existRequirement.DocumentType = model.DocumentType;
+                await _dbContext.SaveChangesAsync();
+                var returnmodel = new DocumentRequireDto()
+                {
+                    Id = existRequirement.Id,
+                    DisplayName = existRequirement.DisplayName,
+                    DocumentType = model.DocumentType,
+                    IsRequire = existRequirement.IsRequire,
+                };
+                return new ServiceResponse<DocumentRequireDto>()
+                {
+                    Data = returnmodel,
+                    Success = true,
+                    Message = "Успешно изменено требование"
+                };
+            }
+            return new ServiceResponse<DocumentRequireDto>()
+            {
+                Success = false,
+                Message = "Не удалось применить изменение к требованию"
+            };
+        }
         public async Task<ServiceResponse<List<DocumentRequireDto>>> GetAllDocumentRequirements()
         {
             var allrequirements = await _dbContext.DocumentUploadRequires.AsNoTracking().ToListAsync();

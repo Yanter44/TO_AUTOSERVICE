@@ -9,10 +9,13 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text;
 using ToMainApi.DbContext;
+using ToMainApi.Features.Support;
 using ToMainApi.Interfaces;
+using ToMainApi.Middlewares;
 using ToMainApi.Services;
 using ToMainApi.Services.AI;
 using ToMainApi.Services.BackgorundServices;
+using ToMainApi.Services.Cache;
 using ToMainApi.Services.Crypt;
 using ToMainApi.Services.Mail;
 using ToMainApi.Services.Notifications;
@@ -91,17 +94,18 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowLocalhost8000",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:8000")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-});
+
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowLocalhost8000",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:8000")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod()
+//                  .AllowCredentials();
+//        });
+//});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -121,22 +125,27 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
         return new BadRequestObjectResult(context.ModelState);
     };
 });
+
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration["ToServiceDb:ConnectionString"]));
 builder.Services.AddAuthorization();
+
 var redisconnectionstring = builder.Configuration["Redis:ConnectionString"];
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     return ConnectionMultiplexer.Connect(redisconnectionstring);
 });
-builder.Services.AddScoped<IRedisService, RedisService>();
+builder.Services.AddSingleton<IRedisService, RedisService>();
 builder.Services.AddHttpClient<IEmailService, MailerSendService>();
 builder.Services.AddTransient<IEncryptService, AesEncryptionService>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 builder.Services.AddScoped<IAgentService, AgentService>();
 builder.Services.AddTransient<IAdminService, AdminService>();
-builder.Services.AddHttpClient<ICloudinaryService, CloudinaryService>();
+builder.Services.AddHttpClient<ICloudinaryService, CloudinaryService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 builder.Services.AddTransient<IModeratorService, ModeratorService>();
 builder.Services.AddScoped<IPromptService, PromptService>();
 builder.Services.AddScoped<IPtoService, PtoService>();
@@ -148,13 +157,17 @@ builder.Services.AddTransient<IDocumentUploadRequirementService, DocumentUploadR
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IApplicationNotificationService, ApplicationNotificationsService>();
 builder.Services.AddScoped<IPaymentNotificationService, PaymentsNotificationsService>();
+builder.Services.AddScoped<IApplicationChargeService, ApplicationChargeService>();
 
 builder.Services.AddScoped<INotificationsSender,NotificationSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-builder.Services.AddHttpClient<INeuronNetworkStrategy,NanoBananaAiProvider>();
-builder.Services.AddHttpClient<INeuronNetworkStrategy,ReveAiProvider>();
-builder.Services.AddScoped<NeuronNetworkDispatcher>();
+builder.Services.AddScoped<INeuronNetworkService, NeuronNetworkService>();
+builder.Services.AddHttpClient<INeuronNetwork, RouteAiProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
+builder.Services.AddSingleton<IUserBlockCache, UserBlockCache>();
 builder.Services.AddTransient<IimageMetadataEditor, ImageMetadataEditorService>();
 builder.Services.AddTransient<ICoordinateFormatConverterService, CoordinateFormatConverter>();
 builder.Services.AddTransient<IimageTextOverlayService, ImageTextOverlayService>();
@@ -169,6 +182,7 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB
 });
+
 var app = builder.Build();
 
 await DbInitializer.SeedAdminAsync(app);
@@ -178,8 +192,8 @@ await DbInitializer.SeedVehicleCategories(app);
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.UseAuthentication();
+app.UseMiddleware<BlockedUserMiddleware>();
 app.UseAuthorization();
-
 app.Use(async (context, next) =>
 {
     Console.WriteLine($"{DateTime.Now:HH:mm:ss} → {context.Request.Method} {context.Request.Path}");

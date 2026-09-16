@@ -14,6 +14,7 @@ namespace ToMainApi.Controllers
         {
             _notificationService = notificationService;
         }
+
         [Authorize]
         [HttpGet("GetNotifications")]
         public async Task<IActionResult> GetNotifications([FromQuery] int page, int pageSize)

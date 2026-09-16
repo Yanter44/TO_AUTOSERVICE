@@ -8,5 +8,6 @@ namespace ToMainApi.Interfaces
         Task<ServiceResponse<List<DocumentRequireDto>>> GetAllDocumentRequirements();
         Task<ServiceResponse<DocumentRequireDto>> AddDocumentRequirement(AddDocumentRequirementDto model);
         Task<ServiceResponse<bool>> DeleteDocumentRequirement(int documentRequireId);
+        Task<ServiceResponse<DocumentRequireDto>> EditDocumentRequirement(EditDocumentRequirementDto model);
     }
 }

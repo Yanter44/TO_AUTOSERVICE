@@ -22,6 +22,9 @@ namespace ToMainApi.DbContext
         public DbSet<PhotoUploadRequire> PhotoUploadRequires { get; set; }
         public DbSet<DocumentUploadRequire> DocumentUploadRequires { get; set; }
         public DbSet<Notification> Notifications { get; set; } 
+        public DbSet<RouteAINeuronNetwork> RouteAINeuronNetworks {get; set;}
+        public DbSet<UserStatus> UserStatuses { get; set; }
+        public DbSet<UserBlocks> UserBlocks { get; set; } 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }

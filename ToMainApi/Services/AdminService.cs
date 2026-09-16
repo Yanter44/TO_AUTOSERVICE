@@ -58,14 +58,5 @@ namespace ToMainApi.Services
             }
             return null;
         }
-        public async Task<ServiceResponse<bool>> ChangeUserDebtLimit(ChangeUserDebtLimitDto model)
-        {
-            var existuser = await _dbcontext.Users.Include(x => x.AgentProfile).FirstOrDefaultAsync(x => x.Id == model.UserId);
-            if (existuser != null)
-            {
-                existuser.AgentProfile.Wallet.DebtLimit = model.NewDebtLimit;
-            }
-            return null;
-        }
     }
 }

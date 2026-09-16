@@ -144,7 +144,7 @@ namespace ToMainApi.Services
                 {
                     Data = false,
                     Success = false,
-                    Message = "Prompt not found"
+                    Message = "Промпт не найден"
                 };
             }
 
@@ -168,7 +168,7 @@ namespace ToMainApi.Services
                 {
                     Data = null,
                     Success = false,
-                    Message = "Prompt not found"
+                    Message = "Промпт не найден"
                 };
             }
 
