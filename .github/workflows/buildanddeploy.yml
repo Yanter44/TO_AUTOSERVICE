@@ -45,20 +45,18 @@ jobs:
             "Redis": {
               "ConnectionString": "${{ secrets.REDISCONNECTIONSTRING }}"
             },
-            "CloudinaryService": {
-              "Cloud": "${{ secrets.CLOUDINARYSERVICECLOUD }}",
-              "ApiKey": "${{ secrets.CLOUDINARYSERVICEAPIKEY }}",
-              "ApiSecret": "${{ secrets.CLOUDINARYSERVICEAPISECRET }}"
+              "CloudinaryService": {
+              "Cloud": "${{secrets.CLOUDINARYSERVICECLOUD}}",
+              "ApiKey": "${{secrets.CLOUDINARYSERVICEAPIKEY}}",
+              "ApiSecret": "${{secrets.CLOUDINARYSERVICEAPISECRET}}"
             },
             "MailerSend": {
-              "ApiKey": "${{ secrets.MAILERSENDAPIKEY }}",
-              "FromEmail": "${{ secrets.MAILERSENDFROMEMAIL }}"
+              "ApiKey": "${{secrets.MAILERSENDAPIKEY}}",
+              "FromEmail": "${{secrets.MAILERSENDFROMEMAIL}}"
             },
-            "ReveAi": {
-              "ApiKey": "${{ secrets.REVEAIAPIKEY }}"
-            },
-            "NanoBanana": {
-              "ApiKey": "${{ secrets.NANOBANANAAPIKEY }}"
+            "RouteAiApi": {
+              "BaseUrl": "https://routerai.ru/api/v1",
+              "ApiKey": "${{secrets.ROUTEAIAPIKEY}}"
             },
             "AllowedHosts": "*"
           }
