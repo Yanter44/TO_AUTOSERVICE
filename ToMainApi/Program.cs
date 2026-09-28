@@ -107,17 +107,17 @@ builder.Services.AddSwaggerGen(options =>
 //                  .AllowCredentials();
 //        });
 //});
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowLocalhost4200",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:4200")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-});
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowLocalhost4200",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:4200")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod()
+//                  .AllowCredentials();
+//        });
+//});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -205,7 +205,7 @@ var app = builder.Build();
 await DbInitializer.SeedAdminAsync(app);
 await DbInitializer.SeedVehicleCategories(app);
 //app.UseCors("AllowLocalhost8000");
-app.UseCors("AllowLocalhost4200");
+//app.UseCors("AllowLocalhost4200");
 
 app.MapHub<NotificationHub>("/notificationHub");
 
