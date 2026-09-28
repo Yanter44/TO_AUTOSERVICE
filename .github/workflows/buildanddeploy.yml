@@ -58,6 +58,9 @@ jobs:
               "BaseUrl": "https://routerai.ru/api/v1",
               "ApiKey": "${{secrets.ROUTEAIAPIKEY}}"
             },
+            "App": {
+              "FrontendUrl": "http://2.26.69.122"
+            },
             "AllowedHosts": "*"
           }
           EOF
