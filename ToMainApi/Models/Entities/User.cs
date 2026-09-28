@@ -1,4 +1,7 @@
-﻿namespace ToMainApi.Models.Entities
+﻿
+using ToMainApi.Models.Enums;
+
+namespace ToMainApi.Models.Entities
 {
     public class User
     {
@@ -6,7 +9,7 @@
         public string FIO { get; set; }
         public string Email { get; set; }
         public string Password { get; set; }
-        public string RoleType { get; set; }
+        public Role RoleType { get; set; }
         public UserStatus Status { get; set; }
         public List<UserBlocks> Blocks { get; set; } = new();
         public AgentProfile AgentProfile { get; set; }

@@ -22,9 +22,9 @@ namespace ToMainApi.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var result = await _notificationService.GetNotifications(userId, page, pageSize);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
     }
 }

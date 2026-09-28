@@ -7,6 +7,6 @@ namespace ToMainApi.Interfaces
 {
     public interface INeuronNetwork
     {
-        Task<ServiceResponse<GeneratePhotoResponse>> ProcessPhotoAsync(Stream photo, List<string> prompts, NeuronNetworkDto model);
+        Task<ServiceResponse<GeneratePhotoResponse>> ProcessPhotoAsync(IReadOnlyList<Stream> photos, List<string> prompts, NeuronNetworkDto model);
     }
 }

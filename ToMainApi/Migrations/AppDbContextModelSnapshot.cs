@@ -41,6 +41,39 @@ namespace ToMainApi.Migrations
                     b.ToTable("AdminProfiles");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.AgentBranch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("OwnerAgentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerAgentId");
+
+                    b.ToTable("AgentBranches");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.AgentProfile", b =>
                 {
                     b.Property<int>("Id")
@@ -49,10 +82,27 @@ namespace ToMainApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ParentAgentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ParentAgentId");
+
+                    b.HasIndex("Path");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -283,6 +333,52 @@ namespace ToMainApi.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.PhotoInGallery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Tag")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(900)
+                        .HasColumnType("character varying(900)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .IsDescending();
+
+                    b.HasIndex("Group");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
+
+                    b.HasIndex("Tag");
+
+                    b.ToTable("PhotoGallery");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.PhotoUploadRequire", b =>
                 {
                     b.Property<int>("Id")
@@ -362,20 +458,25 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Latitude")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Login")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("Longitude")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -559,7 +660,8 @@ namespace ToMainApi.Migrations
 
                     b.Property<string>("RoleType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 
@@ -618,6 +720,66 @@ namespace ToMainApi.Migrations
                     b.HasIndex("UserId", "UnblockedAt");
 
                     b.ToTable("UserBlocks");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserInvitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("RoleType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_UserInvitations_CreatedByUserId");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("IX_UserInvitations_Email");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserInvitations_Token");
+
+                    b.ToTable("UserInvitations");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.UserStatus", b =>
@@ -715,13 +877,38 @@ namespace ToMainApi.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.AgentBranch", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.AgentProfile", "Owner")
+                        .WithMany("OwnedBranches")
+                        .HasForeignKey("OwnerAgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.AgentProfile", b =>
                 {
+                    b.HasOne("ToMainApi.Models.Entities.AgentBranch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ToMainApi.Models.Entities.AgentProfile", "ParentAgent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentAgentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ToMainApi.Models.Entities.User", "User")
                         .WithOne("AgentProfile")
                         .HasForeignKey("ToMainApi.Models.Entities.AgentProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("ParentAgent");
 
                     b.Navigation("User");
                 });
@@ -883,6 +1070,23 @@ namespace ToMainApi.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.UserInvitation", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.AgentBranch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("ToMainApi.Models.Entities.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("CreatedBy");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.UserStatus", b =>
                 {
                     b.HasOne("ToMainApi.Models.Entities.User", "User")
@@ -912,6 +1116,10 @@ namespace ToMainApi.Migrations
 
             modelBuilder.Entity("ToMainApi.Models.Entities.AgentProfile", b =>
                 {
+                    b.Navigation("Children");
+
+                    b.Navigation("OwnedBranches");
+
                     b.Navigation("Wallet")
                         .IsRequired();
                 });

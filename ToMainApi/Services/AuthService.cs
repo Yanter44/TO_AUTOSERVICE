@@ -8,6 +8,7 @@ using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Auth;
+using ToMainApi.Models.Dtos.Invitation;
 using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
 using ToMainApi.Models.Enums;
@@ -21,15 +22,17 @@ namespace ToMainApi.Services
         private readonly IEncryptService _encryptService;
         private readonly IRedisService _redisService;
         private readonly IEmailService _emailService;
+        private readonly IinvitationService _invitationService;
         private readonly IConfiguration _configuration;
         public AuthService(AppDbContext dbcontext,IEncryptService encryptService, 
                            IRedisService redisService, 
-                           IEmailService emailservice, IConfiguration configuration)
+                           IEmailService emailservice, IinvitationService invitationService,IConfiguration configuration)
         {
             _dbContext = dbcontext;
             _encryptService = encryptService;
             _redisService = redisService;
             _emailService = emailservice;
+            _invitationService = invitationService;
             _configuration = configuration;
         }
 
@@ -81,6 +84,7 @@ namespace ToMainApi.Services
                 new Claim(ClaimTypes.NameIdentifier, userdtomodel.UserId.ToString()),
                 new Claim(ClaimTypes.Email, userdtomodel.Email),
                 new Claim(ClaimTypes.Role, userdtomodel.Role),
+                new Claim("FIO", userdtomodel.FIO)
             };
                 
             var secretkey = _configuration["Jwt:Key"];
@@ -108,7 +112,8 @@ namespace ToMainApi.Services
             {
                new Claim(ClaimTypes.NameIdentifier, usermodel.Id.ToString()),
                new Claim(ClaimTypes.Email, usermodel.Email),
-               new Claim(ClaimTypes.Role, usermodel.RoleType),
+               new Claim(ClaimTypes.Role, usermodel.RoleType.ToString()),
+               new Claim("FIO", usermodel.FIO)
             };
 
             var secretkey = _configuration["Jwt:Key"];
@@ -134,6 +139,10 @@ namespace ToMainApi.Services
                 AccessToken = jwt,
                 RefreshToken = jwtrefresh,
             };
+            await _dbContext.RefreshTokens
+                            .Where(rt => rt.UserId == usermodel.Id)
+                            .ExecuteDeleteAsync();
+
             var refreshtokenmodel = new RefreshToken()
             {
                 UserId = usermodel.Id,
@@ -216,30 +225,143 @@ namespace ToMainApi.Services
                     Message = "Почта не подтверждена"
                 };
             }
+            var emailExists = await _dbContext.Users
+                .AnyAsync(u => u.Email == registermodel.Email);
+
+            if (emailExists)
+            {
+                return new ServiceResponse<AccessAndRefreshTokenModel>
+                {
+                    Success = false,
+                    Message = "Пользователь с таким email уже существует"
+                };
+            }
             var newUser = new User
             {
                 Email = registermodel.Email,
                 FIO = registermodel.FIO,
                 Password = _encryptService.Encrypt(registermodel.Password),
-                RoleType = Role.Agent.ToString(),
+                RoleType = Role.Agent,
                 RegDate = DateTime.UtcNow,
+                Status = new UserStatus
+                {
+                    IsBlocked = false,
+                    BlockedUntil = null
+                },
+
                 AgentProfile = new AgentProfile
                 {
-                    Wallet = new Wallet()
+                    Wallet = new Wallet
+                    {
+                        Balance = 0,
+                        DebtLimit = 0,
+                        CurrentDebt = 0
+                    }
                 }
             };
 
             await _dbContext.Users.AddAsync(newUser);
-            await _dbContext.SaveChangesAsync(); 
-
+            await _dbContext.SaveChangesAsync();
             var result = await LoginUser(newUser);
             await _dbContext.SaveChangesAsync();
             await _redisService.DeleteAsync($"{registermodel.RegistrationId}_CodeConfirmed");
+
             return new ServiceResponse<AccessAndRefreshTokenModel>
             {
                 Data = result.Data,
-                Success = true
+                Success = true,
+                Message = "Регистрация успешна"
             };
+        }
+        public async Task<ServiceResponse<AccessAndRefreshTokenModel>> AcceptInvitation(AcceptInvitationDto model)
+        {
+            var invitationResult = await _invitationService.Consume(model.Token);
+
+            if (!invitationResult.Success)
+            {
+                return new ServiceResponse<AccessAndRefreshTokenModel>
+                {
+                    Success = false,
+                    Message = invitationResult.Message
+                };
+            }
+            var invitation = invitationResult.Data;
+            if (await _dbContext.Users.AnyAsync(u => u.Email == invitation.Email))
+            {
+                return new ServiceResponse<AccessAndRefreshTokenModel>
+                {
+                    Success = false,
+                    Message = "Пользователь с таким email уже существует"
+                };
+            }
+
+            var user = new User
+            {
+                Email = invitation.Email,
+                FIO = model.FIO,
+                Password = _encryptService.Encrypt(model.Password),
+                RoleType = invitation.RoleType,
+                RegDate = DateTime.UtcNow,
+                Status = new UserStatus { IsBlocked = false }
+            };
+
+            int? parentAgentId = null;
+            string? parentPath = null;
+            int? branchIdFromInvitation = null;
+
+            if (invitation.RoleType == Role.Agent)
+            {
+                var inviter = await _dbContext.Users
+                    .AsNoTracking()
+                    .Include(u => u.AgentProfile)
+                    .FirstOrDefaultAsync(u => u.Id == invitation.CreatedByUserId);
+
+                if (inviter?.RoleType == Role.Agent && inviter.AgentProfile is not null)
+                {
+                    parentAgentId = inviter.AgentProfile.Id;
+                    parentPath = inviter.AgentProfile.Path;
+                }
+                branchIdFromInvitation = invitation.BranchId;
+            }
+            switch (invitation.RoleType)
+            {
+                case Role.Agent:
+                    var agentProfile = new AgentProfile
+                    {
+                        Wallet = new Wallet { Balance = 0, DebtLimit = 0, CurrentDebt = 0 },
+                        Path = Guid.NewGuid().ToString("N"),
+                        ParentAgentId = parentAgentId,
+                        BranchId = branchIdFromInvitation,   
+                    };
+                    user.AgentProfile = agentProfile;
+                    break;
+
+                case Role.Moderator:
+                    user.ModeratorProfile = new ModeratorProfile();
+                    break;
+
+                case Role.Admin:
+                    user.AdminProfile = new AdminProfile();
+                    break;
+
+                default:
+                    return new ServiceResponse<AccessAndRefreshTokenModel>
+                    {
+                        Success = false,
+                        Message = "Неизвестная роль"
+                    };
+            }
+
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+            if (user.AgentProfile is not null)
+            {
+                user.AgentProfile.Path = parentPath is not null ? $"{parentPath}.{user.AgentProfile.Id}" : user.AgentProfile.Id.ToString();
+                await _dbContext.SaveChangesAsync();
+            }
+
+            var loginResult = await LoginUser(user);
+            return loginResult;
         }
     }
 }

@@ -7,6 +7,7 @@ using ToMainApi.Models.Dtos.Prompt;
 using ToMainApi.Models.Dtos.Pto;
 using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
+using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Services
 {
@@ -111,16 +112,30 @@ namespace ToMainApi.Services
             await _dbcontext.SaveChangesAsync();
             return new ServiceResponse<bool>() { Success = true };
         }
-        public async Task<ServiceResponse<bool>> DeletePto(int ptoId)
+        public async Task<ServiceResponse<bool>> DeletePtoAsync(int ptoId)
         {
-            var existpto = await _dbcontext.Ptos.FirstOrDefaultAsync(x => x.Id == ptoId);
-            if(existpto != null)
+            var pto = await _dbcontext.Ptos.FindAsync(ptoId);
+            if (pto == null || pto.IsDeleted)
+                return new ServiceResponse<bool> { Success = false, Message = "ПТО не найдено" };
+
+            pto.IsDeleted = true;
+            pto.DeletedAt = DateTime.UtcNow;
+            pto.IsActive = false;
+
+            var affectedStatuses = new[]
             {
-                _dbcontext.Remove(existpto);
-                await _dbcontext.SaveChangesAsync();
-                return new ServiceResponse<bool>() { Success = true };
-            }
-            return new ServiceResponse<bool>() { Success = false };
+                ApplicationStatus.Validating.ToString(),
+                ApplicationStatus.OnModeration.ToString(),
+                ApplicationStatus.Approved.ToString(),
+            };
+
+            await _dbcontext.Applications
+                .Where(a => a.PtoId == ptoId && affectedStatuses.Contains(a.Status))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, ApplicationStatus.Error.ToString()));
+
+            await _dbcontext.SaveChangesAsync();
+            return new ServiceResponse<bool> { Data = true, Success = true };
         }
         public async Task<ServiceResponse<bool>> UpdatePto(UpdatePtoRequestDto model)
         {

@@ -8,5 +8,6 @@ namespace ToMainApi.Models.Dtos.Ai
         public int PhotoId { get; set; }
         public int NeuronNetworkId { get; set; }
         public List<int> PromptsIds { get; set; }
+        public List<string> AdditionalPhotoUrls { get; set; } = new();
     }
 }

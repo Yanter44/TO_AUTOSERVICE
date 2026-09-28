@@ -24,8 +24,7 @@ namespace ToMainApi.Services
             _logger = logger;
             _userService = userService;
         }
-        public async Task<ServiceResponse<bool>> ChargeForApplication(
-       int applicationId, int userId, CancellationToken ct = default)
+        public async Task<ServiceResponse<bool>> ChargeForApplication(int applicationId, int userId, CancellationToken ct = default)
         {
             var application = await _dbcontext.Applications
                 .Include(a => a.Agent).ThenInclude(ag => ag.Wallet)

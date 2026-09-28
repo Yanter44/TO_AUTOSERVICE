@@ -85,28 +85,55 @@ namespace ToMainApi.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
-
         [Authorize(Roles = "Admin,Moderator")]
         [HttpPost("GeneratePhoto")]
-        public async Task <IActionResult> GeneratePhoto([FromBody] AiPhotoUploadRequest model)
+        public async Task<IActionResult> GeneratePhoto([FromBody] AiPhotoUploadRequest model)
         {
-            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            var promptresult = await _promptService.GetPromptsByUserIdAndIds(userid, model.PromptsIds);
+            var promptResult = await _promptService.GetPromptsByUserIdAndIds(userId, model.PromptsIds);
             var neuronNetworkResult = await _neuronNetworkService.GetNeuronNetworkById(model.NeuronNetworkId);
-            var photodata = await _applicationPhotoService.GetApplicationPhotoByApplicationIdAndPhotoId(model.ApplicationId, model.PhotoId);
-            if (promptresult.Success && neuronNetworkResult.Success)
+            var photoData = await _applicationPhotoService.GetApplicationPhotoByApplicationIdAndPhotoId(model.ApplicationId, model.PhotoId);
+
+            if (!promptResult.Success || !neuronNetworkResult.Success || !photoData.Success || photoData.Data is null)
+                return BadRequest("Не удалось получить исходные данные");
+
+            var streams = new List<Stream>();
+            try
             {
-                var photostreamresult = await _cloudinaryService.DownloadPhotoAsStreamAsync(photodata.Data.Url);
-                var photovalidateresult = _imageValidatorService.Validate(photostreamresult.Data);
-                if (photovalidateresult.Success && photostreamresult.Success)
+                var mainStreamResult = await _cloudinaryService.DownloadPhotoAsStreamAsync(photoData.Data.Url);
+                if (!mainStreamResult.Success || mainStreamResult.Data is null)
+                    return BadRequest($"Не удалось скачать фото заявки: {mainStreamResult.Message}");
+
+                var mainValidation = _imageValidatorService.Validate(mainStreamResult.Data);
+                if (!mainValidation.Success)
+                    return BadRequest($"Фото заявки не прошло валидацию: {mainValidation.Message}");
+
+                streams.Add(mainStreamResult.Data);
+                foreach (var url in model.AdditionalPhotoUrls ?? Enumerable.Empty<string>())
                 {
-                    var result = await _neuronNetwork.ProcessPhotoAsync(photostreamresult.Data, promptresult.Data, neuronNetworkResult.Data);
-                    return Ok(result);
+                    if (string.IsNullOrWhiteSpace(url)) continue;
+
+                    var extraResult = await _cloudinaryService.DownloadPhotoAsStreamAsync(url);
+                    if (!extraResult.Success || extraResult.Data is null)
+                        return BadRequest($"Не удалось скачать доп. фото: {extraResult.Message}");
+
+                    var extraValidation = _imageValidatorService.Validate(extraResult.Data);
+                    if (!extraValidation.Success)
+                        return BadRequest($"Доп. фото не прошло валидацию: {extraValidation.Message}");
+
+                    streams.Add(extraResult.Data);
                 }
-                return BadRequest(promptresult);
+                var result = await _neuronNetwork.ProcessPhotoAsync(streams, promptResult.Data, neuronNetworkResult.Data);
+                return Ok(result);
             }
-            return BadRequest();
+            finally
+            {
+                foreach (var s in streams)
+                {
+                    try { s.Dispose(); } catch {  }
+                }
+            }
         }
 
         [Authorize(Roles = "Admin,Moderator")]

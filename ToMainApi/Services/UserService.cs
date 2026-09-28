@@ -3,9 +3,11 @@ using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Agent;
+using ToMainApi.Models.Dtos.Invitation;
 using ToMainApi.Models.Dtos.Pagination;
 using ToMainApi.Models.Dtos.User;
 using ToMainApi.Models.Entities;
+using static System.Net.WebRequestMethods;
 
 namespace ToMainApi.Services
 {
@@ -13,7 +15,6 @@ namespace ToMainApi.Services
     {
         private readonly AppDbContext _dbcontext;
         private readonly ILogger<UserService> _logger;
-
         public UserService(AppDbContext dbcontext, ILogger<UserService> logger)
         {
             _dbcontext = dbcontext;
@@ -72,7 +73,7 @@ namespace ToMainApi.Services
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     RegDate = x.RegDate
                 })
                 .ToListAsync();
@@ -96,7 +97,7 @@ namespace ToMainApi.Services
                         UserId = userId,
                         FIO = existUser.FIO,
                         Email = existUser.Email,
-                        Role = existUser.RoleType,
+                        Role = existUser.RoleType.ToString(),
                         RegDate = existUser.RegDate,
                     },
                     Success = true
@@ -111,7 +112,7 @@ namespace ToMainApi.Services
 
             var agents = await _dbcontext.Users
                 .AsNoTracking()
-                .Where(x => x.RoleType == "Agent")
+                .Where(x => x.RoleType.ToString() == "Agent")
                 .Include(x => x.AgentProfile)
                 .ThenInclude(x => x.Wallet)
                 .Select(x => new UserDto
@@ -119,7 +120,7 @@ namespace ToMainApi.Services
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     Balance = x.AgentProfile.Wallet.Balance,
                     DebtLimit = x.AgentProfile.Wallet.DebtLimit,
                     RegDate = x.RegDate
@@ -127,14 +128,14 @@ namespace ToMainApi.Services
 
             var admins = await _dbcontext.Users
                 .AsNoTracking()
-                .Where(x => x.RoleType == "Admin")
+                .Where(x => x.RoleType.ToString() == "Admin")
                 .Include(x => x.AdminProfile)
                 .Select(x => new UserDto
                 {
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     RegDate = x.RegDate,
                 }).ToListAsync();
            
@@ -175,11 +176,11 @@ namespace ToMainApi.Services
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     RegDate = x.RegDate
                 };
 
-                if (x.RoleType == "Agent" && x.AgentProfile?.Wallet != null)
+                if (x.RoleType.ToString() == "Agent" && x.AgentProfile?.Wallet != null)
                 {
                     userDto.Balance = x.AgentProfile.Wallet.Balance;
                     userDto.DebtLimit = x.AgentProfile.Wallet.DebtLimit;        
@@ -207,7 +208,7 @@ namespace ToMainApi.Services
 
             var agents = await _dbcontext.Users
                 .AsNoTracking()
-                .Where(x => x.RoleType == "Agent" && x.Id != currentUserId)
+                .Where(x => x.RoleType.ToString() == "Agent" && x.Id != currentUserId)
                 .Include(x => x.AgentProfile)
                 .ThenInclude(x => x.Wallet)
                 .Select(x => new UserDto
@@ -215,7 +216,7 @@ namespace ToMainApi.Services
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     Balance = x.AgentProfile.Wallet.Balance,
                     DebtLimit = x.AgentProfile.Wallet.DebtLimit,
                     RegDate = x.RegDate
@@ -224,14 +225,14 @@ namespace ToMainApi.Services
 
             var admins = await _dbcontext.Users
                 .AsNoTracking()
-                .Where(x => x.RoleType == "Admin" && x.Id != currentUserId)
+                .Where(x => x.RoleType.ToString() == "Admin" && x.Id != currentUserId)
                 .Include(x => x.AdminProfile)
                 .Select(x => new UserDto
                 {
                     UserId = x.Id,
                     FIO = x.FIO,
                     Email = x.Email,
-                    Role = x.RoleType,
+                    Role = x.RoleType.ToString(),
                     RegDate = x.RegDate
                 })
                 .ToListAsync();
@@ -247,36 +248,34 @@ namespace ToMainApi.Services
         }
         public async Task<ServiceResponse<List<AgentDto>>> GetAllAgents()
         {
-            var result = await _dbcontext.Users
-                .AsNoTracking()
-                .Where(x => x.RoleType == "Agent")
-                .Select(x => new AgentDto
-                {
-                    Id = x.Id,
-                    FIO = x.FIO,
-                    //Role = x.RoleType,
-                    Balance = x.AgentProfile.Wallet.Balance
-                })
-                .ToListAsync();
-
-       
+            var result = await _dbcontext.AgentProfiles
+                               .AsNoTracking()
+                               .Where(a => a.User.RoleType.ToString() == "Agent")
+                               .Select(a => new AgentDto
+                               {
+                                   Id = a.UserId,
+                                   FIO = a.User.FIO,
+                                   Balance = a.Wallet != null ? a.Wallet.Balance : 0m
+                               })
+                               .ToListAsync();
             return new ServiceResponse<List<AgentDto>>
             {
                 Data = result,
                 Success = true
             };
         }
+
         public async Task<List<UserDto>> GetUsersByRoles(IEnumerable<string> roles)
         {
             return await _dbcontext.Users
                 .AsNoTracking()
-                .Where(u => roles.Contains(u.RoleType))
+                .Where(u => roles.Contains(u.RoleType.ToString()))
                 .Select(u => new UserDto
                 {
                     UserId = u.Id,
                     FIO = u.FIO,
                     Email = u.Email,
-                    Role = u.RoleType,
+                    Role = u.RoleType.ToString(),
                     RegDate = u.RegDate
                 })
                 .ToListAsync();
@@ -403,6 +402,8 @@ namespace ToMainApi.Services
 
             return new ServiceResponse<bool> { Success = true, Data = true };
         }
+       
+      
         public async Task<ServiceResponse<List<UserBlockHistoryDto>>> GetUserBlockHistory(int userId)
         {
             try

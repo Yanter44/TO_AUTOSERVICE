@@ -19,5 +19,6 @@ namespace ToMainApi.Interfaces
         Task<ServiceResponse<bool>> BlockUser(UserContextDto userContext, BlockUserDto model);
         Task<ServiceResponse<bool>> UnblockUser(UserContextDto userContext, UnblockUserDto model);
         Task<ServiceResponse<bool>> ChangeUserDebtLimit(ChangeUserDebtLimitDto model);
+    
     }
 }

@@ -1,6 +1,4 @@
-﻿using CloudinaryDotNet.Actions;
-using MediatR;
-using Microsoft.AspNetCore.Identity;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
@@ -34,105 +32,12 @@ namespace ToMainApi.Services
             _logger = logger;
 
         }
-        //public async Task CreateNewApplication(int UserId, CreateNewApplicationDto model)
-        //{
-        //    try
-        //    {
-        //        var agentId = await _dbcontext.AgentProfiles
-        //            .Where(ap => ap.UserId == UserId)
-        //            .Select(ap => ap.Id)
-        //            .FirstOrDefaultAsync();
-
-        //        if (agentId == 0)
-        //        {
-        //            var error = "Профиль агента не найден в системе";
-        //            _logger.LogError("{Error}. UserId: {UserId}", error, UserId);
-
-        //            await _mediator.Publish(new ApplicationProcessingErrorEvent(0, UserId, error));
-        //            return;
-        //        }
-        //        var application = new Application
-        //        {
-        //            AgentId = agentId,
-        //            VehicleCategoryId = model.VehicleCategoryId,
-        //            VIN = model.VIN,
-        //            GosNumber = model.GosNumber,
-        //            Brand = model.Brand,
-        //            Model = model.Model,
-        //            YearOfRelease = model.YearOfRelease,
-        //            FIO = model.FIO,
-        //            Email = model.Email,
-        //            PhoneNumber = model.PhoneNumber,
-        //            PtoId = model.PtoId,
-        //            Documents = new List<ApplicationDocument>(),
-        //            Photos = new List<ApplicationPhoto>(),
-        //            Status = ApplicationStatus.Processing.ToString(),
-        //            CreatedAt = DateTime.UtcNow
-        //        };
-        //        _dbcontext.Applications.Add(application);
-        //        await _dbcontext.SaveChangesAsync();
-
-        //        var applicationId = application.Id;
-        //        foreach (var document in model.DocumentFiles)
-        //        {
-        //            try
-        //            {
-        //                application.Documents.Add(new ApplicationDocument
-        //                {
-        //                    Type = document.Type,
-        //                    Url = document.DocumentUrl
-        //                });
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                _logger.LogError(ex, "Ошибка загрузки документа. UserId: {UserId}", UserId);
-        //                application.Status = ApplicationStatus.Error.ToString();
-        //                await _dbcontext.SaveChangesAsync();
-        //                await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки документа: {ex.Message}"));
-        //                return;
-        //            }
-        //        }
-        //        foreach (var photo in model.VehiclePhotos)
-        //        {
-        //            try
-        //            {
-        //                application.Photos.Add(new ApplicationPhoto
-        //                {
-        //                    VehiclePhotoType = photo.VehiclePhotoType,
-        //                    Url = photo.PhotoUrl
-        //                });
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                _logger.LogError(ex, "Ошибка загрузки фото. UserId: {UserId}", UserId);
-        //                application.Status = ApplicationStatus.Error.ToString();
-        //                await _dbcontext.SaveChangesAsync();
-        //                await _mediator.Publish(new ApplicationProcessingErrorEvent(applicationId,UserId,$"Ошибка загрузки фото: {ex.Message}"));
-        //                return;
-        //            }
-        //        }
-        //        application.Status = ApplicationStatus.Moderated.ToString();
-        //        await _dbcontext.SaveChangesAsync();
-        //        _logger.LogInformation("Заявка {ApplicationId} успешно создана", applicationId);
-        //        await _mediator.Publish(new ApplicationCreatedEvent(applicationId, UserId));
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Критическая ошибка при создании заявки. UserId: {UserId}", UserId);
-        //        await _mediator.Publish(new ApplicationProcessingErrorEvent(
-        //            0,
-        //            UserId,
-        //            $"Внутренняя ошибка: {ex.Message}"
-        //        ));
-        //    }
-        //}
         public async Task CreateNewApplication(int userId, CreateNewApplicationDto model)
         {
             using var transaction = await _dbcontext.Database.BeginTransactionAsync();
 
             try
             {
-                // 1. Проверить агента
                 var agentId = await _dbcontext.AgentProfiles
                     .Where(ap => ap.UserId == userId)
                     .Select(ap => ap.Id)
@@ -161,7 +66,7 @@ namespace ToMainApi.Services
                     PtoId = model.PtoId,
                     Documents = new List<ApplicationDocument>(),
                     Photos = new List<ApplicationPhoto>(),
-                    Status = ApplicationStatus.Processing.ToString(),
+                    Status = ApplicationStatus.Validating.ToString(),
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -187,22 +92,10 @@ namespace ToMainApi.Services
                     });
                 }
 
-                await _dbcontext.SaveChangesAsync();
-
-                var chargeResult = await _applicationChargeService
-                    .ChargeForApplication(applicationId, userId);
-
-                if (!chargeResult.Success)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogWarning("Заявка не создана: {Message}", chargeResult.Message);
-                    await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, chargeResult.Message));
-                    return;         
-                }
-                application.Status = ApplicationStatus.Moderated.ToString();
+                application.Status = ApplicationStatus.OnModeration.ToString();
                 await _dbcontext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                _logger.LogInformation("Заявка {Id} создана и оплачена", applicationId);
+                _logger.LogInformation("Заявка {Id} создана", applicationId);
                 await _mediator.Publish(new ApplicationCreatedEvent(applicationId, userId));
             }
             catch (Exception ex)
@@ -213,7 +106,29 @@ namespace ToMainApi.Services
                 
             }
         }
-    
+        public async Task<ServiceResponse<bool>> AcceptApplication(AcceptApplicationDto model)
+        {
+            var existApplication = await _dbcontext.Applications.FirstOrDefaultAsync(x => x.Id == model.ApplicationId);
+            if (existApplication == null)
+            {
+                return new ServiceResponse<bool>() { Success = false, Message = "Такой заявки нет в системе" };
+            }
+            existApplication.Status = ApplicationStatus.Approved.ToString();
+            await _dbcontext.SaveChangesAsync();
+            return new ServiceResponse<bool>() { Success = true, Message = "Заявка успешно одобрена" };
+        }
+        public async Task<ServiceResponse<bool>> RejectApplication(RejectApplicationDto model)
+        {
+            var existApplication = await _dbcontext.Applications.FirstOrDefaultAsync(x => x.Id == model.ApplicationId);
+            if(existApplication == null)
+            {
+                return new ServiceResponse<bool>() { Success = false, Message = "Такой заявки нет в системе" };
+            }
+            existApplication.Status = ApplicationStatus.RejectedByModerator.ToString();
+            existApplication.RejectReason = model.RejectReason;
+            await _dbcontext.SaveChangesAsync();
+            return new ServiceResponse<bool>() { Success = true, Message = "Заявка успешно отклонена" };
+        }
         public async Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel)
         {
             var query = _dbcontext.Applications.AsQueryable();
@@ -252,7 +167,7 @@ namespace ToMainApi.Services
                     .Select(g => new
                     {
                         Total = g.Count(),
-                        InModeration = g.Count(x => x.Status == ApplicationStatus.Moderated.ToString()),
+                        InModeration = g.Count(x => x.Status == ApplicationStatus.OnModeration.ToString()),
                         Approved = g.Count(x => x.Status == ApplicationStatus.Approved.ToString()),
                         Today = g.Count(x => x.CreatedAt.Date == today)
                     })
@@ -310,7 +225,7 @@ namespace ToMainApi.Services
                 {
                     Models.Enums.Role.Admin => query,
                     Models.Enums.Role.Agent => query.Where(x => x.Agent != null && x.Agent.UserId == userContext.Id),
-                    Models.Enums.Role.Moderator => query.Where(x => x.Status == ApplicationStatus.Moderated.ToString()),
+                    Models.Enums.Role.Moderator => query,
                     _ => query.Where(x => false)
                 };
 

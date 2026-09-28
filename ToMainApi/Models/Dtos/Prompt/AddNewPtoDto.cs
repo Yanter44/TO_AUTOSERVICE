@@ -9,8 +9,8 @@ namespace ToMainApi.Models.Dtos.Prompt
         public string RsaNumber { get; set; }
         public string Address { get; set; }
         //Geolocation
-        public string Latitude { get; set; }
-        public string Longitude { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
         //IntergrationWithEAI
         public string Login { get; set; }

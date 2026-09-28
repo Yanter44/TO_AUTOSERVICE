@@ -23,13 +23,8 @@ namespace ToMainApi.Configurations
                 .IsRequired()
                 .HasMaxLength(300);
 
-            builder.Property(x => x.Latitude)
-                .IsRequired()
-                .HasMaxLength(50);
-
-            builder.Property(x => x.Longitude)
-                .IsRequired()
-                .HasMaxLength(50);
+            builder.Property(x => x.Latitude).IsRequired();
+            builder.Property(x => x.Longitude).IsRequired();
 
             builder.Property(x => x.Login)
                 .IsRequired()

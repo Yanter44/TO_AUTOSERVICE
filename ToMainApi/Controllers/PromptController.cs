@@ -35,7 +35,6 @@ namespace ToMainApi.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
-
         
         [Authorize(Roles = "Admin,Moderator")]
         [HttpGet("GetPrompts")]
@@ -56,10 +55,11 @@ namespace ToMainApi.Controllers
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _promtService.AddNewPromptAsync(userid, model);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
+
         [Authorize(Roles = "Admin,Moderator")]
         [HttpDelete("DeletePrompt")]
         public async Task<IActionResult> DeletePrompt([FromQuery] int promptId)
@@ -67,10 +67,11 @@ namespace ToMainApi.Controllers
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _promtService.DeletePromptAsync(userid, promptId);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
+
         [Authorize(Roles = "Admin,Moderator")]
         [HttpPut("UpdatePrompt")]
         public async Task<IActionResult> UpdatePrompt([FromBody] UpdatePromptDto model)
@@ -78,9 +79,9 @@ namespace ToMainApi.Controllers
             var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var result = await _promtService.UpdatePromptAsync(userid, model);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
 
 

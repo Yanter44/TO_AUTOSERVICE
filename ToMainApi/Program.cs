@@ -27,6 +27,7 @@ builder.Services.AddSwaggerGen();
 var key = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -106,6 +107,17 @@ builder.Services.AddSwaggerGen(options =>
 //                  .AllowCredentials();
 //        });
 //});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost4200",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -158,6 +170,9 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IApplicationNotificationService, ApplicationNotificationsService>();
 builder.Services.AddScoped<IPaymentNotificationService, PaymentsNotificationsService>();
 builder.Services.AddScoped<IApplicationChargeService, ApplicationChargeService>();
+builder.Services.AddScoped<IPhotoGalleryService, PhotoGalleryService>();
+builder.Services.AddScoped<IinvitationService, InvitationService>();
+builder.Services.AddScoped<IRefferalService, RefferalService>();
 
 builder.Services.AddScoped<INotificationsSender,NotificationSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -167,6 +182,7 @@ builder.Services.AddHttpClient<INeuronNetwork, RouteAiProvider>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
 });
+
 builder.Services.AddSingleton<IUserBlockCache, UserBlockCache>();
 builder.Services.AddTransient<IimageMetadataEditor, ImageMetadataEditorService>();
 builder.Services.AddTransient<ICoordinateFormatConverterService, CoordinateFormatConverter>();
@@ -174,6 +190,7 @@ builder.Services.AddTransient<IimageTextOverlayService, ImageTextOverlayService>
 builder.Services.AddTransient<IApplicationPhotoService, ApplicationPhotoService>();
 builder.Services.AddTransient<IImageValidator, ImageValidator>();
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
+builder.Services.AddHostedService<EaistoWorkerService>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
 
@@ -188,6 +205,7 @@ var app = builder.Build();
 await DbInitializer.SeedAdminAsync(app);
 await DbInitializer.SeedVehicleCategories(app);
 //app.UseCors("AllowLocalhost8000");
+app.UseCors("AllowLocalhost4200");
 
 app.MapHub<NotificationHub>("/notificationHub");
 

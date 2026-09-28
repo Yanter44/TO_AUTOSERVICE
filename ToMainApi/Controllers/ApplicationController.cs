@@ -26,6 +26,7 @@ namespace ToMainApi.Controllers
             _scopeFactory = scopefactory;
             _cloudinaryService = cloudinaryService;
         }
+
         [Authorize]
         [HttpGet("GetApplications")]
         public async Task<IActionResult> GetApplications([FromQuery] PaginationDto model)
@@ -60,7 +61,7 @@ namespace ToMainApi.Controllers
             var result = await _applicationService.DeleteApplication(model);
             if (result.Success)
                 return Ok();
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Agent")]
@@ -100,16 +101,23 @@ namespace ToMainApi.Controllers
         }
 
         [Authorize(Roles ="Admin,Moderator")]
-        [HttpPost("ConfirmAndSendApplication")]
-        public async Task<IActionResult> ConfirmAndSendApplication()
+        [HttpPost("AcceptApplication")]
+        public async Task<IActionResult> AcceptApplication([FromBody] AcceptApplicationDto model)
         {
-            return Ok();
+            var result = await _applicationService.AcceptApplication(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
+
         [Authorize(Roles ="Admin,Moderator")]
         [HttpPost("RejectApplication")]
-        public async Task<IActionResult> RejectApplication()
+        public async Task<IActionResult> RejectApplication([FromBody] RejectApplicationDto model)
         {
-            return Ok();
+            var result = await _applicationService.RejectApplication(model);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

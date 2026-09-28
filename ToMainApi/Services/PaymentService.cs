@@ -32,10 +32,7 @@ namespace ToMainApi.Services
             using var dbTransaction = await _dbcontext.Database.BeginTransactionAsync();
             try
             {
-                var wallet = await _dbcontext.Users
-                    .Where(x => x.Id == request.AgentId)
-                    .Select(x => x.AgentProfile.Wallet)
-                    .FirstOrDefaultAsync();
+                var wallet = await _dbcontext.Wallets.FirstOrDefaultAsync(w => w.Agent.UserId == request.AgentId);
 
                 if (wallet == null)
                 {
@@ -108,10 +105,7 @@ namespace ToMainApi.Services
 
             try
             {
-                var wallet = await _dbcontext.Users
-                    .Where(x => x.Id == request.AgentId)
-                    .Select(x => x.AgentProfile.Wallet)
-                    .FirstOrDefaultAsync();
+                var wallet = await _dbcontext.Wallets.FirstOrDefaultAsync(w => w.Agent.UserId == request.AgentId);
 
                 if (wallet == null)
                 {

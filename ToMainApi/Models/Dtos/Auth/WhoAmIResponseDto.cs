@@ -3,5 +3,7 @@
     public class WhoAmIResponseDto
     {
         public string RoleType { get; set; }
+        public string FIO { get; set; }
+        public string Email { get; set; }
     }
 }

@@ -15,48 +15,6 @@ namespace ToMainApi.Services
         {
             _dbcontext = dbcontext;
         }
-        public async Task<ServiceResponse<AdminDto>> GetMyProfile(int userId)
-        {
-            var existUser = await _dbcontext.Users
-                .Include(x => x.AdminProfile)
-                .FirstOrDefaultAsync(x => x.Id == userId);
-            if (existUser != null)
-            {
-                var dto = new AdminDto
-                {
-                    Name = existUser.FIO,
-                    Role = existUser.RoleType.ToString()
-                };
-                return new ServiceResponse<AdminDto>
-                {
-                    Data = dto,
-                    Success = true
-                };
-            }
-            return new ServiceResponse<AdminDto>() { Success = false };
-        }
-        public async Task<ServiceResponse<bool>> ChangeUserRole(ChangeUserRoleDto model)
-        {
-            var existUser = await _dbcontext.Users.FirstOrDefaultAsync(x => x.Id == model.UserId);
-            if (existUser != null)
-            {
-                var existUserRole = existUser.RoleType;
-                Enum.TryParse<Models.Enums.Role>(existUserRole, true, out var role);
-                switch (role)
-                {
-                    case Role.Agent:
-
-                        break;
-
-                    case Role.Admin:
-
-                        break;
-                    case Role.Moderator:
-
-                        break;
-                }
-            }
-            return null;
-        }
+     
     }
 }

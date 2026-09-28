@@ -23,33 +23,15 @@ namespace ToMainApi.Services
             _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
-        public async Task<ServiceResponse<AgentDto>> GetMyProfile(int userId)
-        {
-            var existUser = await _dbcontext.Users
-                .Include(x => x.AgentProfile)
-                .FirstOrDefaultAsync(x => x.Id == userId);
-            if (existUser != null)
-            {
-                var dto = new AgentDto
-                {
-                    FIO = existUser.FIO,
-                };
-                return new ServiceResponse<AgentDto>
-                {
-                    Data = dto,
-                    Success = true
-                };
-            }
-            return new ServiceResponse<AgentDto>() { Success = false };
-        }
+
         public async Task<ServiceResponse<decimal>> GetMyBalance(int userId)
         {
-            var walletId = await _dbcontext.Users
-                .Where(x => x.Id == userId)
-                .Select(x => x.AgentProfile.Wallet.Id)
+            var walletId = await _dbcontext.AgentProfiles              
+                .Where(a => a.UserId == userId)
+                .Select(a => (int?)a.Wallet.Id)
                 .FirstOrDefaultAsync();
 
-            if (walletId == 0)
+            if (walletId is null)   
             {
                 return new ServiceResponse<decimal>
                 {
@@ -59,11 +41,11 @@ namespace ToMainApi.Services
             }
 
             var balance = await _dbcontext.Transactions
-                   .Where(x => x.WalletId == walletId 
-                         && x.TransactionStatus == TransactionStatus.Completed.ToString())
-                   .SumAsync(x => x.TransactionType == TransactionType.Credit.ToString()
-                   ? x.Amount
-                   : -x.Amount);
+                .Where(x => x.WalletId == walletId.Value       
+                      && x.TransactionStatus == TransactionStatus.Completed.ToString())
+                .SumAsync(x => x.TransactionType == TransactionType.Credit.ToString()
+                    ? x.Amount
+                    : -x.Amount);
 
             return new ServiceResponse<decimal>
             {
@@ -125,7 +107,6 @@ namespace ToMainApi.Services
 
 
                 var totalCount = await query.CountAsync();
-
   
                 var items = await query
                     .OrderByDescending(t => t.CreatedAt) 

@@ -23,7 +23,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _photoRequirementService.GetAllPhotoRequirements();
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
             return BadRequest();
         }
   
@@ -33,7 +33,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _photoRequirementService.AddPhotoRequirement(model);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
             return BadRequest();
         }
 
@@ -52,7 +52,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _documentRequirementService.GetAllDocumentRequirements();
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
             return BadRequest();
         }
 
@@ -62,7 +62,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _documentRequirementService.AddDocumentRequirement(model);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
             return BadRequest();
         }
 

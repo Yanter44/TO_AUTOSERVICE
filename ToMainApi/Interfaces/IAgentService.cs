@@ -9,11 +9,11 @@ namespace ToMainApi.Interfaces
 {
     public interface IAgentService
     {
-        Task<ServiceResponse<AgentDto>> GetMyProfile(int userId);
         Task<ServiceResponse<decimal>> GetMyBalance(int userId);
         Task<ServiceResponse<decimal>> GetMyDebtLimit(int userId);
         Task<ServiceResponse<decimal>> GetMyCurrentDebt(int userId);
         Task<ServiceResponse<List<AgentTransactionDto>>> GetMyAllBalanceTransactionStory(int userId);
-        Task<ServiceResponse<PagedResponse<AgentTransactionDto>>> GetMyBalanceTransactionStory(UserContextDto userContext, PaginationDto paginationModel);
+        Task<ServiceResponse<PagedResponse<AgentTransactionDto>>> GetMyBalanceTransactionStory(UserContextDto userContext,
+            PaginationDto paginationModel);
     }
 }

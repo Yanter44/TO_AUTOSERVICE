@@ -10,6 +10,11 @@ namespace ToMainApi.Configurations
         {
             builder.HasKey(x => x.Id);
             builder.Property(u => u.Id).ValueGeneratedOnAdd();
+
+            builder.HasOne(x => x.User)
+                .WithOne(u => u.AdminProfile)
+                .HasForeignKey<AdminProfile>(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

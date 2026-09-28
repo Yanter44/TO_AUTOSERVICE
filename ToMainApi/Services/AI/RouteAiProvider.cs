@@ -28,15 +28,39 @@ namespace ToMainApi.Services.AI
             _httpClient.BaseAddress = new Uri(_baseUrl.TrimEnd('/') + "/");
         }
 
-        public async Task<ServiceResponse<GeneratePhotoResponse>> ProcessPhotoAsync(Stream photo,  List<string> prompts, NeuronNetworkDto model)
+        public async Task<ServiceResponse<GeneratePhotoResponse>> ProcessPhotoAsync(IReadOnlyList<Stream> photos, List<string> prompts, NeuronNetworkDto model)
         {
             try
             {
-                using var memoryStream = new MemoryStream();
-                await photo.CopyToAsync(memoryStream);
-                var imageBytes = memoryStream.ToArray();
-                var base64Image = Convert.ToBase64String(imageBytes);
-                var mimeType = "image/png"; 
+                if (photos == null || photos.Count == 0)
+                {
+                    return new ServiceResponse<GeneratePhotoResponse>
+                    {
+                        Success = false,
+                        Message = "Нет фото для генерации"
+                    };
+                }
+
+                var inputReferences = new List<object>(photos.Count);
+
+                foreach (var photo in photos)
+                {
+                    if (photo.CanSeek) photo.Position = 0;
+
+                    using var memoryStream = new MemoryStream();
+                    await photo.CopyToAsync(memoryStream);
+                    var imageBytes = memoryStream.ToArray();
+
+                    var mimeType = DetectMimeType(imageBytes);  
+                    var base64Image = Convert.ToBase64String(imageBytes);
+
+                    inputReferences.Add(new
+                    {
+                        type = "image_url",
+                        image_url = new { url = $"data:{mimeType};base64,{base64Image}" }
+                    });
+                }
+
                 var prompt = string.Join(". ", prompts);
                 var neuronNetworkModel = model.Link;
 
@@ -46,15 +70,9 @@ namespace ToMainApi.Services.AI
                     prompt = prompt,
                     n = 1,
                     aspect_ratio = "16:9",
-                    input_references = new[]
-                    {
-                        new
-                        {
-                            type = "image_url",
-                            image_url = new { url = $"data:{mimeType};base64,{base64Image}" }
-                        }
-                    }
+                    input_references = inputReferences  
                 };
+
                 var endpoint = "images";
                 var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
                 {
@@ -69,7 +87,7 @@ namespace ToMainApi.Services.AI
 
                 if (!httpResponse.IsSuccessStatusCode)
                 {
-                    return new ServiceResponse<GeneratePhotoResponse>()
+                    return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
                         Message = $"API Ошибка ({httpResponse.StatusCode}): {jsonResponse}"
@@ -81,7 +99,7 @@ namespace ToMainApi.Services.AI
 
                 if (root.TryGetProperty("error", out var errorElement))
                 {
-                    return new ServiceResponse<GeneratePhotoResponse>()
+                    return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
                         Message = $"API error: {errorElement}"
@@ -92,7 +110,7 @@ namespace ToMainApi.Services.AI
                     dataElement.ValueKind != JsonValueKind.Array ||
                     dataElement.GetArrayLength() == 0)
                 {
-                    return new ServiceResponse<GeneratePhotoResponse>()
+                    return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
                         Message = $"В ответе нет data: {jsonResponse}"
@@ -103,7 +121,7 @@ namespace ToMainApi.Services.AI
 
                 if (!first.TryGetProperty("b64_json", out var b64Element))
                 {
-                    return new ServiceResponse<GeneratePhotoResponse>()
+                    return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
                         Message = $"В data[0] нет b64_json: {jsonResponse}"
@@ -113,38 +131,47 @@ namespace ToMainApi.Services.AI
                 var base64Data = b64Element.GetString();
                 if (string.IsNullOrEmpty(base64Data))
                 {
-                    return new ServiceResponse<GeneratePhotoResponse>()
+                    return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
                         Message = "b64_json пустой"
                     };
                 }
 
-                string mediaType = "image/png";
-                if (first.TryGetProperty("media_type", out var mtElement))
+                return new ServiceResponse<GeneratePhotoResponse>
                 {
-                    var mt = mtElement.GetString();
-                    if (!string.IsNullOrEmpty(mt)) mediaType = mt;
-                }
-
-                return new ServiceResponse<GeneratePhotoResponse>()
-                {
-                    Data = new GeneratePhotoResponse()
-                    {
-                        ImageBase64 = base64Data,
-                    },
+                    Data = new GeneratePhotoResponse { ImageBase64 = base64Data },
                     Success = true,
                     Message = "Изображение успешно сгенерировано через RouterAI"
                 };
             }
             catch (Exception ex)
             {
-                return new ServiceResponse<GeneratePhotoResponse>()
+                return new ServiceResponse<GeneratePhotoResponse>
                 {
                     Success = false,
                     Message = $"Произошла ошибка: {ex.Message}"
                 };
             }
+        }
+
+        private static string DetectMimeType(byte[] bytes)
+        {
+            if (bytes.Length >= 8 &&
+                bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47)
+                return "image/png";
+
+            if (bytes.Length >= 3 &&
+                bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
+                return "image/jpeg";
+
+            if (bytes.Length >= 12 &&
+                bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+                bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50)
+                return "image/webp";
+
+            // на всякий случай
+            return "image/png";
         }
     }
 }

@@ -11,9 +11,15 @@ namespace ToMainApi.Configurations
             builder.HasKey(u => u.Id);
 
             builder.Property(u => u.Id).ValueGeneratedOnAdd();
+
             builder.Property(u => u.Email)
                    .IsRequired()
                    .HasMaxLength(255);
+
+            builder.Property(u => u.RoleType)
+                   .IsRequired()
+                   .HasConversion<string>()
+                   .HasMaxLength(64);
 
             builder.Property(u => u.FIO)
                    .IsRequired()

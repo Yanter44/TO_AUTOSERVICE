@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Entities;
+using ToMainApi.Models.Enums;
 
 namespace ToMainApi.DbContext
 {
@@ -28,8 +29,14 @@ namespace ToMainApi.DbContext
                 var adminFio = adminSection["FIO"] ?? "Администратор";
                 var adminRole = adminSection["RoleType"] ?? "Admin";
 
+
                 if (string.IsNullOrEmpty(adminEmail) || string.IsNullOrEmpty(adminPassword))
                 {
+                    return;
+                }
+                if (!Enum.TryParse<Role>(adminRole, ignoreCase: true, out var adminRolee))
+                {
+                    Console.WriteLine($"[SEED] Неизвестная роль в конфиге: '{adminRole}'. Ожидается: Admin, Moderator или Agent.");
                     return;
                 }
                 var adminExists = await dbContext.Users.AnyAsync(u => u.Email == adminEmail);
@@ -41,7 +48,7 @@ namespace ToMainApi.DbContext
                         Email = adminEmail,
                         FIO = adminFio,
                         Password = encryptedPassword,
-                        RoleType = adminRole,
+                        RoleType = adminRolee,
                         RegDate = DateTime.UtcNow
                     };
 

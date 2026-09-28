@@ -9,14 +9,17 @@
         public string RsaNumber { get; set; }
         public string Address { get; set; }
         //Geolocation
-        public string Latitude { get; set; }
-        public string Longitude { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
         //IntergrationWithEAI
         public string Login { get; set; }
         public string Password { get; set; }
         public string ApiKey { get; set; }
 
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public bool IsActive { get; set; } = true;
         public List<PtoPricePolicy> PricePolicies { get; set; }
     }
 }

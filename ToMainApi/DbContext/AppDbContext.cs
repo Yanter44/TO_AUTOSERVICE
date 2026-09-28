@@ -25,6 +25,9 @@ namespace ToMainApi.DbContext
         public DbSet<RouteAINeuronNetwork> RouteAINeuronNetworks {get; set;}
         public DbSet<UserStatus> UserStatuses { get; set; }
         public DbSet<UserBlocks> UserBlocks { get; set; } 
+        public DbSet<UserInvitation> UserInvitations { get; set; }
+        public DbSet<PhotoInGallery> PhotoGallery { get; set; }
+        public DbSet<AgentBranch> AgentBranches { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }

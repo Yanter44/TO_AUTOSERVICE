@@ -11,7 +11,7 @@ namespace ToMainApi.Interfaces
         Task<ServiceResponse<List<PtoResponseDto>>> GetAllPtos();
         Task<ServiceResponse<PagedResponse<PtoResponseDto>>> GetPtos(UserContextDto userContext, PaginationDto paginationModel);
         Task<ServiceResponse<bool>> AddNewPto(AddNewPtoDto model);
-        Task<ServiceResponse<bool>> DeletePto(int ptoId);
+        Task<ServiceResponse<bool>> DeletePtoAsync(int ptoId);
         Task<ServiceResponse<bool>> UpdatePto(UpdatePtoRequestDto model);
     }
 }

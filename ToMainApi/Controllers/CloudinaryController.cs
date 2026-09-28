@@ -21,7 +21,8 @@ namespace ToMainApi.Controllers
             _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
-        [Authorize(Roles = "Agent")]
+
+        [Authorize]
         [HttpPost("GetUploadSignature")]
         public async Task<IActionResult> GetUploadSignature([FromBody] CloudinarySignatureRequest request)
         {

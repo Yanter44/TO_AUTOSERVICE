@@ -49,15 +49,15 @@ namespace ToMainApi.Controllers
         {
             var result = await _ptoservice.AddNewPto(model);
             if (result.Success)
-                return Ok();
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin,Moderator")]
         [HttpDelete("DeletePto")]
         public async Task<IActionResult> DeletePto([FromQuery] int ptoId)
         {
-            var result = await _ptoservice.DeletePto(ptoId);
+            var result = await _ptoservice.DeletePtoAsync(ptoId);
             if (result.Success)
                 return Ok();
             return BadRequest(result.Message);

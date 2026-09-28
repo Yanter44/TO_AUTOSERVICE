@@ -7,9 +7,11 @@ using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ToMainApi.Common;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos;
 using ToMainApi.Models.Dtos.Auth;
+using ToMainApi.Models.Dtos.Invitation;
 
 namespace ToMainApi.Controllers
 {
@@ -20,13 +22,15 @@ namespace ToMainApi.Controllers
         private ILogger<AuthController> _logger;
         private readonly IAuthService _authservice;
         private readonly IUserService _userService;
+        private readonly IinvitationService _invitationService;
         public AuthController(IAuthService authservice,
             ILogger<AuthController> logger,
-            IUserService userService)
+            IUserService userService, IinvitationService invitationService)
         {
             _authservice = authservice;
             _logger = logger;
             _userService = userService;
+            _invitationService = invitationService;
         }
 
         [HttpPost("Login")]
@@ -53,6 +57,7 @@ namespace ToMainApi.Controllers
             }
             return BadRequest(new { message = result.Message ?? "Ошибка при входе" });
         }
+
         [HttpPost("TryRegistration")]
         public async Task<IActionResult> TryRegistration([FromBody] TryRegistrationDto request)
         {
@@ -78,11 +83,11 @@ namespace ToMainApi.Controllers
         {
             var result = await _authservice.FinishRegistration(request);
             if (!result.Success)
-                return BadRequest(result.Message);
+                return BadRequest(result);
 
             Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
             Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
-            return Ok(new { message = "Регистрация успешна" });
+            return Ok(new ServiceResponse<bool>() { Success = true, Message = "Регистрация успешна"});
         }
 
         [HttpGet("RefreshToken")]
@@ -101,6 +106,28 @@ namespace ToMainApi.Controllers
                 return Ok();
             }
             return Unauthorized();         
+        }
+
+        [HttpPost("AcceptInvitation")]
+        public async Task<IActionResult> AcceptInvitation([FromBody] AcceptInvitationDto model)
+        {
+            if (model is null ||
+                string.IsNullOrWhiteSpace(model.Token) ||
+                string.IsNullOrWhiteSpace(model.FIO) ||
+                string.IsNullOrWhiteSpace(model.Password))
+            {
+                return BadRequest(new ServiceResponse<bool>() { Success = false, Message = "Поля пусты" });
+            }
+
+            var result = await _authservice.AcceptInvitation(model);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
+
+            Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken,GetCookieOptions(TimeSpan.FromDays(10)));
+            return Ok(new ServiceResponse<bool>() { Success = true, Message = "Регистрация успешна"});
         }
 
         [Authorize]
@@ -124,20 +151,26 @@ namespace ToMainApi.Controllers
             }
             return BadRequest();
         }
+
         [Authorize]
         [HttpGet("Ping")]
         public IActionResult Ping()
         {
             return Ok();
         }
+
         [Authorize]
         [HttpGet("Me")]
-        public async Task<IActionResult> WhoAmI()
+        public IActionResult Me()
         {
-            var role = User.FindFirst(ClaimTypes.Role)?.Value;
-            return Ok(new WhoAmIResponseDto { RoleType = role });
+            return Ok(new WhoAmIResponseDto
+            {
+                RoleType = User.FindFirst(ClaimTypes.Role)?.Value,
+                FIO = User.FindFirst("FIO")?.Value,
+                Email = User.FindFirst(ClaimTypes.Email)?.Value,
+            });
         }
-        
+
         private CookieOptions GetCookieOptions(TimeSpan expiration)
         {
             return new CookieOptions

@@ -42,7 +42,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _paymentService.GetAllTransactions();
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
             return BadRequest();
         }
 

@@ -27,35 +27,15 @@ namespace ToMainApi.Controllers
             _metadataEditor = metadataEditor;
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpGet("GetMyProfile")]
-        public async Task<IActionResult> GetMyProfile()
-        {
-            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _adminService.GetMyProfile(userid);
-            if (result.Success)
-                return Ok(result.Data);
-            return BadRequest(result.Message);
-        }
-
         [HttpPost("Som")]
         public async Task<IActionResult> Ggg(IFormFile photo)
         {
             using var stream = photo.OpenReadStream();
             var result = await _metadataEditor.ProcessImage(stream);
             if (result.Success)
-                return Ok(result.Data);
+                return Ok(result);
 
             return BadRequest();
-        }
-        [Authorize(Roles = "Admin")]
-        [HttpPost("ChangeRoleUser")]
-        public async Task<IActionResult> ChangeUserRole([FromBody] ChangeUserRoleDto model)
-        {
-            var result = await _adminService.ChangeUserRole(model);
-            if (result.Success)
-                return Ok(result);          
-            return BadRequest(result);
         }
 
         [HttpPost("AddTextToPhoto")]

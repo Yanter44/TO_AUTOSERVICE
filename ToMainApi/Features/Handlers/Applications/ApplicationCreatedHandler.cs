@@ -21,7 +21,7 @@ namespace ToMainApi.Features.Handlers.Applications
         }
         public async Task Handle(ApplicationCreatedEvent notification, CancellationToken ct)
         {
-            await _applicationNotificationService.NotifyApplicationCreated(notification.ApplicationId,notification.UserId);
+            await _applicationNotificationService.NotifyApplicationCreated(notification.ApplicationId, notification.UserId);
         }
     }
 }

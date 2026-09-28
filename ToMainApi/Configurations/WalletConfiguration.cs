@@ -21,7 +21,7 @@ namespace ToMainApi.Configurations
                 .HasPrecision(18, 2);
 
             builder.HasOne(x => x.Agent)
-                .WithOne(x => x.Wallet)
+                .WithOne(x => x.Wallet).IsRequired()
                 .HasForeignKey<Wallet>(x => x.AgentId)
                 .OnDelete(DeleteBehavior.Cascade);
 

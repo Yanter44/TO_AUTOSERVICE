@@ -20,7 +20,7 @@ namespace ToMainApi.Controllers
         {
            var result = await _vehicleService.GetAllVehicleCategories();
            if (result.Success)
-               return Ok(result.Data);
+               return Ok(result);
 
            return BadRequest();
         }
@@ -30,8 +30,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _vehicleService.AddNewVehicleCategory(model);
             if (result.Success)
-                return Ok();
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
         [Authorize]
         [HttpDelete("DeleteVehicleCategory")]
@@ -39,8 +39,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _vehicleService.DeleteVehicleCategory(model);
             if (result.Success)
-                return Ok();
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
         [Authorize]
         [HttpPut("UpdateVehicleCategory")]
@@ -48,8 +48,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _vehicleService.UpdateVehicleCategory(model);
             if (result.Success)
-                return Ok();
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }
