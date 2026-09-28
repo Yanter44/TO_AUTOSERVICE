@@ -90,6 +90,7 @@ namespace ToMainApi.Services
 
             var frontendUrl = _configuration["App:FrontendUrl"]?.TrimEnd('/')
                 ?? throw new InvalidOperationException("App:FrontendUrl не настроен");
+
             var inviteLink = $"{frontendUrl}/invite?token={token}";
 
             var roleLabel = role switch
