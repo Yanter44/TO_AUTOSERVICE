@@ -62,7 +62,7 @@ jobs:
               "ProjectId": "${{secrets.INFISICAL_PROJECT_ID}}",
               "Environment": "${{secrets.INFISICAL_ENVIRONMENT}}",
               "ClientId": "${{secrets.INFISICAL_CLIENT_ID}}",
-              "ClientSecret": "${{secrets.INFISICAL_CLIENT_SECRET}}
+              "ClientSecret": "${{secrets.INFISICAL_CLIENT_SECRET}}"
             },
             "App": {
               "FrontendUrl": "http://2.26.69.122"
