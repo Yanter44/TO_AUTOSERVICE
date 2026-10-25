@@ -84,7 +84,7 @@ jobs:
           docker build -f ToMainApi/Dockerfile -t yanterbrown/toautoservice-api:latest ToMainApi/
           docker push yanterbrown/toautoservice-api:latest
           
-      # 4. Деплой контейнеров на сервер
+      # 4. Деплой контейнеров на серв
       - name: Deploy containers to server
         uses: appleboy/ssh-action@v0.1.10
         with:
