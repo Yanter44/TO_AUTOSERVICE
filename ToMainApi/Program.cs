@@ -151,7 +151,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration["ToServiceDb:ConnectionString"]));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration["ToServiceDb:ConnectionString"]).ConfigureWarnings(w =>
+               w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 builder.Services.AddAuthorization();
 
 var redisconnectionstring = builder.Configuration["Redis:ConnectionString"];
