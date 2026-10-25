@@ -22,8 +22,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _paymentService.Credit(model);
             if (result.Success)
-                return Ok();
-            return BadRequest();
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles ="Admin")]
@@ -32,8 +32,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _paymentService.Debit(model);
             if (result.Success)
-                return Ok();
-            return BadRequest();
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles ="Admin")]
@@ -43,7 +43,7 @@ namespace ToMainApi.Controllers
             var result = await _paymentService.GetAllTransactions();
             if (result.Success)
                 return Ok(result);
-            return BadRequest();
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin")]

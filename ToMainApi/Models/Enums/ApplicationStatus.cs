@@ -11,6 +11,9 @@
 
         /// <summary>Одобрена модератором, готова к ЕАИСТО.</summary>
         Approved,
+
+        /// <summary> Все готово, фотографии обработаны </summary>
+        AllReady,
         /// <summary>ЕАИСТО обрабатывает.</summary>
         EaistoProcessing,
         /// <summary>Успех — карта получена.</summary>

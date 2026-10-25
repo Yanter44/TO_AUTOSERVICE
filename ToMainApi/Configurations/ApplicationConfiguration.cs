@@ -23,10 +23,10 @@ namespace ToMainApi.Configurations
             builder.Property(x => x.Model)
                 .HasMaxLength(100);
 
-            builder.Property(x => x.YearOfRelease)
+            builder.Property(x => x.VehicleYearOfRelease)
                 .IsRequired();
 
-            builder.Property(x => x.VehicleCategoryId)
+            builder.Property(x => x.VehicleCategoryBySrtsId)
                 .IsRequired();
 
             builder.Property(x => x.FIO)
@@ -49,15 +49,11 @@ namespace ToMainApi.Configurations
             builder.Property(x => x.PtoId)
                 .IsRequired();
 
-            builder.HasOne(x => x.VehicleCategory)
+            builder.HasOne(x => x.VehicleCategoryBySrts)
                 .WithMany()
-                .HasForeignKey(x => x.VehicleCategoryId)
+                .HasForeignKey(x => x.VehicleCategoryBySrtsId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasMany(x => x.Documents)
-                .WithOne(x => x.Application)
-                .HasForeignKey(x => x.ApplicationId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasMany(x => x.Photos)
                 .WithOne(x => x.Application)
@@ -68,7 +64,7 @@ namespace ToMainApi.Configurations
 
             builder.HasIndex(x => x.PtoId);
 
-            builder.HasIndex(x => x.VehicleCategoryId);
+            builder.HasIndex(x => x.VehicleCategoryBySrtsId);
 
             builder.HasIndex(x => x.Email);
 

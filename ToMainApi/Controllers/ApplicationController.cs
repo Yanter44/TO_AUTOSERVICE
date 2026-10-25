@@ -60,7 +60,7 @@ namespace ToMainApi.Controllers
         {
             var result = await _applicationService.DeleteApplication(model);
             if (result.Success)
-                return Ok();
+                return Ok(result);
             return BadRequest(result);
         }
 
@@ -68,36 +68,12 @@ namespace ToMainApi.Controllers
         [HttpPost("CreateNewApplication")]
         public async Task<IActionResult> CreateNewApplication([FromBody] CreateNewApplicationDto model)
         {
-            var userid = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return BadRequest(new ServiceResponse<bool>() { Success = false, Message = $"Ошибка валидации [{errors}]" });
-            }
-
-            var started = new TaskCompletionSource<bool>();
-
-            _ = Task.Run(async () =>
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationController>>();
-                started.SetResult(true);
-                try
-                {
-                    var applicationService = scope.ServiceProvider.GetRequiredService<IApplicationService>();
-                    await applicationService.CreateNewApplication(userid, model);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Ошибка фонового создания заявки");
-                }
-            });
-            await started.Task;
-            return Ok(new ServiceResponse<bool>
-            {
-                Success = true,
-                Message = "Заявка отправлена на обработку"
-            });
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userContext = new UserContextDto() { Id = userId };
+            var result = await _applicationService.CreateNewApplication(userContext, model);
+            if (!result.Success)
+                return BadRequest(result);
+            return Ok(result);
         }
 
         [Authorize(Roles ="Admin,Moderator")]

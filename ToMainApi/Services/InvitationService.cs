@@ -136,7 +136,7 @@ namespace ToMainApi.Services
                                 </div>";
 
             await _emailService.SendEmailAsync(model.Email, "Приглашение в команду TO-Agent!", $"Приглашение в команду TO-Agent! {inviteLink}",htmlBody);
-            return new ServiceResponse<bool> { Success = true, Message = "Приглашение успешно отправлено" };
+            return new ServiceResponse<bool> { Success = true, Message = ResponseMessages.Success };
         }
         public async Task<ServiceResponse<InvitationInfoDto>> GetInvitationByToken(string token)
         {

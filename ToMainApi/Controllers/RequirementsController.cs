@@ -24,7 +24,7 @@ namespace ToMainApi.Controllers
             var result = await _photoRequirementService.GetAllPhotoRequirements();
             if (result.Success)
                 return Ok(result);
-            return BadRequest();
+            return BadRequest(result);
         }
   
         [Authorize(Roles ="Admin")]
@@ -34,7 +34,7 @@ namespace ToMainApi.Controllers
             var result = await _photoRequirementService.AddPhotoRequirement(model);
             if (result.Success)
                 return Ok(result);
-            return BadRequest();
+            return BadRequest(result);
         }
 
         [Authorize(Roles ="Admin")]
@@ -43,8 +43,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _photoRequirementService.DeletePhotoRequirement(photoRequirementId);
             if (result.Success)
-                return Ok();
-            return BadRequest();
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [HttpGet("GetAllDocumentRequirements")]
@@ -53,7 +53,7 @@ namespace ToMainApi.Controllers
             var result = await _documentRequirementService.GetAllDocumentRequirements();
             if (result.Success)
                 return Ok(result);
-            return BadRequest();
+            return BadRequest(result);
         }
 
         [Authorize(Roles ="Admin")]
@@ -63,7 +63,7 @@ namespace ToMainApi.Controllers
             var result = await _documentRequirementService.AddDocumentRequirement(model);
             if (result.Success)
                 return Ok(result);
-            return BadRequest();
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin")]
@@ -92,8 +92,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _documentRequirementService.DeleteDocumentRequirement(documentRequirementId);
             if (result.Success)
-                return Ok();
-            return BadRequest();
+                return Ok(result);
+            return BadRequest(result);
         }
 
     }

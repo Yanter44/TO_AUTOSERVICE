@@ -17,11 +17,9 @@ namespace ToMainApi.Services
 
         public async Task<ServiceResponse<DocumentRequireDto>> EditDocumentRequirement(EditDocumentRequirementDto model)
         {
-            var existRequirement = await _dbContext.DocumentUploadRequires.AsNoTracking().FirstOrDefaultAsync(x => x.Id == model.Id);
+            var existRequirement = await _dbContext.ApplicationProvidedDocuments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == model.Id);
             if(existRequirement != null)
             {
-                
-                existRequirement.IsRequire = model.IsRequire;
                 existRequirement.DisplayName = model.DisplayName;
                 existRequirement.DocumentType = model.DocumentType;
                 await _dbContext.SaveChangesAsync();
@@ -30,13 +28,12 @@ namespace ToMainApi.Services
                     Id = existRequirement.Id,
                     DisplayName = existRequirement.DisplayName,
                     DocumentType = model.DocumentType,
-                    IsRequire = existRequirement.IsRequire,
                 };
                 return new ServiceResponse<DocumentRequireDto>()
                 {
                     Data = returnmodel,
                     Success = true,
-                    Message = "Успешно изменено требование"
+                    Message = ResponseMessages.Success
                 };
             }
             return new ServiceResponse<DocumentRequireDto>()
@@ -47,13 +44,12 @@ namespace ToMainApi.Services
         }
         public async Task<ServiceResponse<List<DocumentRequireDto>>> GetAllDocumentRequirements()
         {
-            var allrequirements = await _dbContext.DocumentUploadRequires.AsNoTracking().ToListAsync();
+            var allrequirements = await _dbContext.ApplicationProvidedDocuments.AsNoTracking().ToListAsync();
             var dtos = allrequirements.Select(x => new DocumentRequireDto
             {
                 Id = x.Id,
                 DocumentType = x.DocumentType,
                 DisplayName = x.DisplayName,
-                IsRequire = x.IsRequire
             }).ToList();
             return new ServiceResponse<List<DocumentRequireDto>>() { Data = dtos, Success = true };
         }
@@ -76,14 +72,13 @@ namespace ToMainApi.Services
                     Success = false,
                 };
             }
-            var newRequirement = new DocumentUploadRequire
+            var newRequirement = new ApplicationProvidedDocument
             {
                 DocumentType = model.DocumentType.Trim(),
                 DisplayName = model.DisplayName.Trim(),
-                IsRequire = model.IsRequire
             };
 
-            await _dbContext.DocumentUploadRequires.AddAsync(newRequirement);
+            await _dbContext.ApplicationProvidedDocuments.AddAsync(newRequirement);
             await _dbContext.SaveChangesAsync();
 
             var resultDto = new DocumentRequireDto
@@ -91,7 +86,6 @@ namespace ToMainApi.Services
                 Id = newRequirement.Id,
                 DocumentType = newRequirement.DocumentType,
                 DisplayName = newRequirement.DisplayName,
-                IsRequire = newRequirement.IsRequire
             };
 
             return new ServiceResponse<DocumentRequireDto>
@@ -102,14 +96,14 @@ namespace ToMainApi.Services
         }
         public async Task<ServiceResponse<bool>> DeleteDocumentRequirement(int documentRequireId)
         {
-            var existrequirement = await _dbContext.DocumentUploadRequires.FirstOrDefaultAsync(x => x.Id == documentRequireId);
+            var existrequirement = await _dbContext.ApplicationProvidedDocuments.FirstOrDefaultAsync(x => x.Id == documentRequireId);
             if(existrequirement != null)
             {
                 _dbContext.Remove(existrequirement);
                 await _dbContext.SaveChangesAsync();
-                return new ServiceResponse<bool>() { Success = true };
+                return new ServiceResponse<bool>() { Success = true, Message = "Требование удалено" };
             }
-            return new ServiceResponse<bool>() { Success = false };
+            return new ServiceResponse<bool>() { Success = false, Message = "Требование не найдено" };
         } 
     }
 }

@@ -56,7 +56,6 @@ namespace ToMainApi.Controllers
             var result = await _promtService.AddNewPromptAsync(userid, model);
             if (result.Success)
                 return Ok(result);
-
             return BadRequest(result);
         }
 

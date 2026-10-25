@@ -12,6 +12,7 @@ using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos;
 using ToMainApi.Models.Dtos.Auth;
 using ToMainApi.Models.Dtos.Invitation;
+using ToMainApi.Models.Dtos.User;
 
 namespace ToMainApi.Controllers
 {
@@ -36,26 +37,23 @@ namespace ToMainApi.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            if (request == null || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
-            {
-                return BadRequest(new { message = "Email и пароль обязательны" });
-            }
-
             var user = await _authservice.CheckUsers(request);
             if (user == null)
-            {
-                return BadRequest(new { message = "Неверный email или пароль" });
-            }
+                return BadRequest(new ServiceResponse<bool> { Success = false,
+                                                              Message = "Неверный email или пароль" });
+
+            var block = await _authservice.GetActiveBlockAsync(user.Id);
+            if (block.IsBlocked)
+                return Blocked(block);
 
             var result = await _authservice.LoginUser(user);
             if (result.Success)
             {
                 Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
                 Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken, GetCookieOptions(TimeSpan.FromDays(30)));
-
-                return Ok(new { message = "Успешный вход" });
+                return Ok(result);
             }
-            return BadRequest(new { message = result.Message ?? "Ошибка при входе" });
+            return BadRequest(result);
         }
 
         [HttpPost("TryRegistration")]
@@ -71,11 +69,9 @@ namespace ToMainApi.Controllers
         public async Task<IActionResult> ConfirmRegistrationCode([FromBody] ConfirmCodeDto model)
         {
             var result = await _authservice.ConfirmRegistrationCode(model);
-            if(result.Success == true)
-            {
-                return Ok();
-            }
-            return BadRequest();
+            if(result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [HttpPost("FinishRegistration")]
@@ -95,37 +91,39 @@ namespace ToMainApi.Controllers
         {
             var refreshToken = Request.Cookies["jwtrefresh"];
             if (string.IsNullOrEmpty(refreshToken))
-                return Unauthorized();
+                return Unauthorized(new ServiceResponse<bool> { Success = false, Message = "Нет токена" });
 
             var checkRefreshTokenResult = await _authservice.CheckRefreshToken(refreshToken);
-            if (checkRefreshTokenResult.Success)
+            if (!checkRefreshTokenResult.Success)
+                return Unauthorized(checkRefreshTokenResult);
+
+            var block = await _authservice.GetActiveBlockAsync(checkRefreshTokenResult.Data);
+            if (block.IsBlocked)
             {
-                var userdtoresult = await _userService.GetUserById(checkRefreshTokenResult.Data);
-                var resultJwt = await _authservice.CreateAccessToken(userdtoresult.Data);
-                Response.Cookies.Append("jwt", resultJwt.Data, GetCookieOptions(TimeSpan.FromMinutes(30)));
-                return Ok();
+                ClearAuthCookies();
+                return Blocked(block);
             }
-            return Unauthorized();         
+
+            var userdtoresult = await _userService.GetUserById(checkRefreshTokenResult.Data);
+            if (!userdtoresult.Success || userdtoresult.Data == null)
+                return Unauthorized(new ServiceResponse<bool> { Success = false, Message = userdtoresult.Message ?? "Пользователь не найден" });
+
+            var resultJwt = await _authservice.CreateAccessToken(userdtoresult.Data);
+            if (!resultJwt.Success || string.IsNullOrEmpty(resultJwt.Data))
+                return Unauthorized(new ServiceResponse<bool> { Success = false, Message = resultJwt.Message ?? "Не удалось обновить токен" });
+
+            Response.Cookies.Append("jwt", resultJwt.Data, GetCookieOptions(TimeSpan.FromMinutes(30)));
+            return Ok(new ServiceResponse<bool> { Success = true, Message = "Токен обновлён" });
         }
 
         [HttpPost("AcceptInvitation")]
         public async Task<IActionResult> AcceptInvitation([FromBody] AcceptInvitationDto model)
         {
-            if (model is null ||
-                string.IsNullOrWhiteSpace(model.Token) ||
-                string.IsNullOrWhiteSpace(model.FIO) ||
-                string.IsNullOrWhiteSpace(model.Password))
-            {
-                return BadRequest(new ServiceResponse<bool>() { Success = false, Message = "Поля пусты" });
-            }
-
             var result = await _authservice.AcceptInvitation(model);
-
             if (!result.Success)
                 return BadRequest(result);
 
             Response.Cookies.Append("jwt", result.Data.AccessToken, GetCookieOptions(TimeSpan.FromMinutes(30)));
-
             Response.Cookies.Append("jwtrefresh", result.Data.RefreshToken,GetCookieOptions(TimeSpan.FromDays(10)));
             return Ok(new ServiceResponse<bool>() { Success = true, Message = "Регистрация успешна"});
         }
@@ -138,18 +136,10 @@ namespace ToMainApi.Controllers
             var result = await _authservice.SignOut(refreshToken);
             if (result.Success)
             {
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddDays(-1)
-                };
-                Response.Cookies.Append("jwt", "", cookieOptions);
-                Response.Cookies.Append("jwtrefresh", "", cookieOptions);
-                return Ok();
+                ClearAuthCookies();
+                return Ok(result);
             }
-            return BadRequest();
+            return BadRequest(result);
         }
 
         [Authorize]
@@ -169,6 +159,23 @@ namespace ToMainApi.Controllers
                 FIO = User.FindFirst("FIO")?.Value,
                 Email = User.FindFirst(ClaimTypes.Email)?.Value,
             });
+        }
+
+        private IActionResult Blocked(UserBlockInfoDto info)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ServiceResponse<UserBlockInfoDto>
+            {
+                Success = false,
+                Message = "Ваш аккаунт заблокирован",
+                Data = info
+            });
+        }
+
+        private void ClearAuthCookies()
+        {
+            var cookieOptions = GetCookieOptions(TimeSpan.FromDays(-1));
+            Response.Cookies.Append("jwt", "", cookieOptions);
+            Response.Cookies.Append("jwtrefresh", "", cookieOptions);
         }
 
         private CookieOptions GetCookieOptions(TimeSpan expiration)

@@ -44,7 +44,7 @@ namespace ToMainApi.Services
                     Link = entity.Link,
                     CreatedAt = entity.CreatedAt
                 };
-                return new ServiceResponse<NeuronNetworkDto>() { Data = responsemodel, Success = true, Message = "Нейронная сеть успешно добавлена" };
+                return new ServiceResponse<NeuronNetworkDto>() { Data = responsemodel, Success = true, Message = ResponseMessages.Success};
             }
             catch(Exception ex){
                 _logger.LogError(ex, "Ошибка при добавлении новой нейронной сети");
@@ -119,7 +119,7 @@ namespace ToMainApi.Services
                 {
                     Data = dto,
                     Success = true,
-                    Message = "Нейронная сеть успешно обновлена"
+                    Message = ResponseMessages.Success
                 };
             }
             catch(Exception ex){

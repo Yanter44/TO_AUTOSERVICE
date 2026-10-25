@@ -41,12 +41,16 @@ namespace ToMainApi.Features.Support
                 if (applicationId == 0)
                 {
                     title = "Ошибка создания заявки";
-                    message = $"Не удалось создать заявку. Ошибка: {errorMessage}";
+                    message = string.IsNullOrWhiteSpace(errorMessage)
+                        ? "Не удалось создать заявку"
+                        : errorMessage;
                 }
                 else
                 {
                     title = "Ошибка обработки заявки";
-                    message = $"Заявка №{applicationId} не прошла обработку. Ошибка: {errorMessage}";
+                    message = string.IsNullOrWhiteSpace(errorMessage)
+                        ? $"Заявка №{applicationId} не прошла обработку"
+                        : errorMessage;
                 }
 
                 var agentNotification = new Notification

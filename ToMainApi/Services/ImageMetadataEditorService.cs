@@ -6,34 +6,47 @@ namespace ToMainApi.Services
 {
     public class ImageMetadataEditorService : IimageMetadataEditor
     {
-        public async Task<ServiceResponse<string>> ProcessImage(Stream photo)
+        private readonly ILogger<ImageMetadataEditorService> _logger;
+
+        public ImageMetadataEditorService(ILogger<ImageMetadataEditorService> logger)
         {
-            if (photo == null || !photo.CanRead)
-            {
-                return new ServiceResponse<string>() { Success = false };
-            }
+            _logger = logger;
+        }
+        public async Task<ServiceResponse<MemoryStream>> ProcessImage(Stream photo)
+        {
+            if (photo is null || !photo.CanRead)
+                return new ServiceResponse<MemoryStream> { Success = false, Message = "Файл не передан" };
 
             try
             {
                 using var image = new MagickImage(photo);
 
-                var originalAuthor = image.GetAttribute("Artist");
-
                 image.SetAttribute("Artist", "My Metadata Service");
                 image.SetAttribute("Comment", "Processed by API");
                 image.SetAttribute("Software", "ImageMetadataEditorService");
 
-                using var ms = new MemoryStream();
-                await image.WriteAsync(ms);
-                ms.Position = 0;
+                var ms = new MemoryStream();
+                try
+                {
+                    await image.WriteAsync(ms);
+                    ms.Position = 0;
 
-                var base64 = Convert.ToBase64String(ms.ToArray());
-
-                return new ServiceResponse<string>() { Data = base64, Success = true};
+                    return new ServiceResponse<MemoryStream>
+                    {
+                        Data = ms,
+                        Success = true,
+                    };
+                }
+                catch
+                {
+                    await ms.DisposeAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                return new ServiceResponse<string>() { Success = false };
+                _logger.LogError(ex, "Не удалось обработать метаданные фото");
+                return new ServiceResponse<MemoryStream> { Success = false, Message = ResponseMessages.Error };
             }
         }
     }

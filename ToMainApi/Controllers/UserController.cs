@@ -16,9 +16,11 @@ namespace ToMainApi.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IUserBlockCache _userBlockCache;
+        public UserController(IUserService userService, IUserBlockCache userBlockCache)
         {
             _userService = userService;
+            _userBlockCache = userBlockCache;
         }
 
         [Authorize(Roles = "Admin")]
@@ -29,7 +31,7 @@ namespace ToMainApi.Controllers
             if(result.Success)
                 return Ok(result.Data);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin")]
@@ -51,7 +53,7 @@ namespace ToMainApi.Controllers
             if (result.Success)
                 return Ok(result.Data);
 
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin")]
@@ -82,7 +84,10 @@ namespace ToMainApi.Controllers
             var usercontext = new UserContextDto() { Id = userid, Role = userrole };
             var result = await _userService.BlockUser(usercontext, model);
             if (result.Success)
+            {
+                await _userBlockCache.InvalidateAsync(model.BlockUserId);
                 return Ok(result);
+            }
             return BadRequest(result);
         }
 
@@ -108,7 +113,10 @@ namespace ToMainApi.Controllers
             var result = await _userService.UnblockUser(usercontext, model);
 
             if (result.Success)
+            {
+                await _userBlockCache.InvalidateAsync(model.UnblockUserId);
                 return Ok(result);
+            }
 
             return BadRequest(result);
         }

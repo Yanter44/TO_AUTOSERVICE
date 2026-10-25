@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Features.Events.Applications;
@@ -18,93 +19,112 @@ namespace ToMainApi.Services
     public class ApplicationService : IApplicationService
     {
         private readonly AppDbContext _dbcontext;
-        private readonly IApplicationChargeService _applicationChargeService;
         private readonly IMediator _mediator;
         private readonly ILogger<ApplicationService> _logger;
-        public ApplicationService(AppDbContext dbcontext,
-            IApplicationChargeService applicationChargeService,
-            IMediator mediator,
+        public ApplicationService(AppDbContext dbcontext, IMediator mediator,
             ILogger<ApplicationService> logger)
         {
             _dbcontext = dbcontext;
-            _applicationChargeService = applicationChargeService;
             _mediator = mediator;
             _logger = logger;
 
         }
-        public async Task CreateNewApplication(int userId, CreateNewApplicationDto model)
+        public async Task<ServiceResponse<ApplicationDto>> CreateNewApplication(UserContextDto userContext, CreateNewApplicationDto model)
         {
-            using var transaction = await _dbcontext.Database.BeginTransactionAsync();
+            var agentId = await _dbcontext.AgentProfiles
+                .Where(ap => ap.UserId == userContext.Id)
+                .Select(ap => ap.Id)
+                .FirstOrDefaultAsync();
 
-            try
+            if (agentId == 0)
+                return new ServiceResponse<ApplicationDto> { Success = false, Message = "Профиль агента не найден в системе" };
+       
+            var application = new Application
             {
-                var agentId = await _dbcontext.AgentProfiles
-                    .Where(ap => ap.UserId == userId)
-                    .Select(ap => ap.Id)
-                    .FirstOrDefaultAsync();
+                AgentId = agentId,
 
-                if (agentId == 0)
-                {
-                    await transaction.RollbackAsync();
-                    var error = "Профиль агента не найден в системе";
-                    _logger.LogError("{Error}. UserId: {UserId}", error, userId);
-                    await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, error));
-                    return;
-                }
-                var application = new Application
-                {
-                    AgentId = agentId,
-                    VehicleCategoryId = model.VehicleCategoryId,
-                    VIN = model.VIN,
-                    GosNumber = model.GosNumber,
-                    Brand = model.Brand,
-                    Model = model.Model,
-                    YearOfRelease = model.YearOfRelease,
-                    FIO = model.FIO,
-                    Email = model.Email,
-                    PhoneNumber = model.PhoneNumber,
-                    PtoId = model.PtoId,
-                    Documents = new List<ApplicationDocument>(),
-                    Photos = new List<ApplicationPhoto>(),
-                    Status = ApplicationStatus.Validating.ToString(),
-                    CreatedAt = DateTime.UtcNow
-                };
+                ProvidedDocumentId = model.ProvidedDocumentId,
+                ProvidedDocumentSeriesAndNumber = model.ProvidedDocumentSeriesAndNumber,
+                ProvidedDocumentWhenWasIssued = model.ProvidedDocumentWhenWasIssued,
+                ProvidedDocumentIssuedBy = model.ProvidedDocumentIssuedBy,
 
-                _dbcontext.Applications.Add(application);
-                await _dbcontext.SaveChangesAsync();
+                IsVinMissing = model.IsVinMissing,
+                VIN = model.VIN,
+                VehicleYearOfRelease = model.VehicleYearOfRelease,
+                Brand = model.Brand,
+                Model = model.Model,
+                GosNumber = model.GosNumber,
+                VehicleBodyNumber = model.VehicleBodyNumber,
+                IsChassisNumberMissing = model.IsChassisNumberMissing,
+                ChassisNumber = model.ChassisNumber,
+                AdditionalMarking = model.AdditionalMarking,
+                MassWithoutLoad = model.MassWithoutLoad,
+                VehicleCategoryBySrtsId = model.VehicleCategoryBySrtsOrPtsId,
+                VehicleCategoryByOkpId = model.VehicleCategoyByOkpId,
+                VehicleMileage = model.VehicleMileage,
+                AlowedMaximumMass = model.AlowedMaximumMass,
+                FuelType = model.FuelType,
+                TypeOfBrakeSystemDrive = model.TypeOfBrakeSystemDrive,
+                TireBrand = model.TireBrand,
+                SpecialPurpose = model.SpecialPurpose,
+                IsTahogramMissing = model.IsTahogramMissing,
+                BrandOfTachograph = model.BrandOfTachograph,
+                ModelOfTachograph = model.ModelOfTachograph,
+                SerialNumberOfTachograph = model.SerialNumberOfTachograph,
+                IsGasCylinderEquipmentMissing = model.IsGasCylinderEquipmentMissing,
+                NumberOfGasCylinderEquipment = model.NumberOfGasCylinderEquipment,
+                DateOfTheNextInspectionGasCylinderEquipment = model.DateOfTheNextInspectionGasCylinderEquipment,
 
-                var applicationId = application.Id;
-                foreach (var doc in model.DocumentFiles)
+                IsGasCylinderMissing = model.IsGasCylinderMissing,
+                GasCylinderYearOfRelease = model.GasCylinderYearOfRelease,
+                GasCylinderSerialNumber = model.GasCylinderSerialNumber,
+                DateOfTheLastExaminationGasCylinder = model.DateOfTheLastInspectionGasCylinder,
+                DateOfTheNextInspectionGasCylinder = model.DateOfTheNextInspectionGasCylinder,
+
+                FIO = model.FIO,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
+
+                PtoId = model.PtoId,
+                Photos = model.VehiclePhotos.Select(photo => new ApplicationPhoto
                 {
-                    application.Documents.Add(new ApplicationDocument
+                    VehiclePhotoType = photo.VehiclePhotoType,
+                    Url = photo.PhotoUrl
+                }).ToList(),
+                Status = ApplicationStatus.OnModeration.ToString(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _dbcontext.Applications.Add(application);
+            await _dbcontext.SaveChangesAsync();
+            await _mediator.Publish(new ApplicationCreatedEvent(application.Id, userContext.Id.Value));
+
+            return new ServiceResponse<ApplicationDto>
+            {
+                Success = true,
+                Message = "Заявка создана",
+                Data = new ApplicationDto
+                {
+                    Id = application.Id,
+                    VIN = application.VIN,
+                    GosNumber = application.GosNumber,
+                    Brand = application.Brand,
+                    Model = application.Model,
+                    FIO = application.FIO,
+                    Email = application.Email,
+                    PhoneNumber = application.PhoneNumber,
+                    PtoId = application.PtoId,
+                    CreatedAt = application.CreatedAt,
+                    Status = application.Status,
+                    Photos = application.Photos.Select(photo => new ApplicationPhotoDto
                     {
-                        Type = doc.Type,
-                        Url = doc.DocumentUrl
-                    });
-                }
-
-                foreach (var photo in model.VehiclePhotos)
-                {
-                    application.Photos.Add(new ApplicationPhoto
-                    {
+                        Id = photo.Id,
+                        FileName = $"photo_{photo.Id}.jpg",
                         VehiclePhotoType = photo.VehiclePhotoType,
-                        Url = photo.PhotoUrl
-                    });
+                        Url = photo.Url
+                    }).ToList()
                 }
-
-                application.Status = ApplicationStatus.OnModeration.ToString();
-                await _dbcontext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                _logger.LogInformation("Заявка {Id} создана", applicationId);
-                await _mediator.Publish(new ApplicationCreatedEvent(applicationId, userId));
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Критическая ошибка. UserId: {UserId}", userId);
-                await _mediator.Publish(new ApplicationProcessingErrorEvent(0, userId, ex.Message));
-                
-            }
+            };
         }
         public async Task<ServiceResponse<bool>> AcceptApplication(AcceptApplicationDto model)
         {
@@ -115,7 +135,7 @@ namespace ToMainApi.Services
             }
             existApplication.Status = ApplicationStatus.Approved.ToString();
             await _dbcontext.SaveChangesAsync();
-            return new ServiceResponse<bool>() { Success = true, Message = "Заявка успешно одобрена" };
+            return new ServiceResponse<bool>() { Success = true, Message = ResponseMessages.Success };
         }
         public async Task<ServiceResponse<bool>> RejectApplication(RejectApplicationDto model)
         {
@@ -127,7 +147,7 @@ namespace ToMainApi.Services
             existApplication.Status = ApplicationStatus.RejectedByModerator.ToString();
             existApplication.RejectReason = model.RejectReason;
             await _dbcontext.SaveChangesAsync();
-            return new ServiceResponse<bool>() { Success = true, Message = "Заявка успешно отклонена" };
+            return new ServiceResponse<bool>() { Success = true, Message = ResponseMessages.Success };
         }
         public async Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel)
         {
@@ -197,20 +217,10 @@ namespace ToMainApi.Services
                 };
             }
         }
-        public async Task<ServiceResponse<PagedResponse<ApplicationDto>>> GetApplications(
-           UserContextDto userContext,
-           PaginationDto pagination)
+        public async Task<ServiceResponse<PagedResponse<ApplicationDto>>> GetApplications(UserContextDto userContext, PaginationDto pagination)
         {
             try
             {
-                var query = _dbcontext.Applications
-                    .AsNoTracking()
-                    .Include(x => x.Photos)
-                    .Include(x => x.Documents)
-                    .Include(x => x.Agent)
-                        .ThenInclude(a => a.User)
-                    .Include(x => x.VehicleCategory);
-
                 if (!Enum.TryParse<Models.Enums.Role>(userContext.Role, true, out var role))
                 {
                     return new ServiceResponse<PagedResponse<ApplicationDto>>
@@ -221,25 +231,22 @@ namespace ToMainApi.Services
                     };
                 }
 
-                IQueryable<Application> filteredQuery = role switch
+                var query = _dbcontext.Applications.AsNoTracking()
+                    .Include(x => x.ProvidedDocument)
+                    .Include(x => x.VehicleCategoryBySrts)
+                    .Include(x => x.VehicleCategoryByOkp);
+
+                var filteredQuery = role switch
                 {
                     Models.Enums.Role.Admin => query,
-                    Models.Enums.Role.Agent => query.Where(x => x.Agent != null && x.Agent.UserId == userContext.Id),
                     Models.Enums.Role.Moderator => query,
+                    Models.Enums.Role.Agent => query.Where(x => x.Agent.UserId == userContext.Id),
                     _ => query.Where(x => false)
                 };
 
-                if (filteredQuery == null)
-                {
-                    return new ServiceResponse<PagedResponse<ApplicationDto>>
-                    {
-                        Data = null,
-                        Success = false,
-                        Message = "У вас нет прав для просмотра этой информации"
-                    };
-                }
-
                 var totalCount = await filteredQuery.CountAsync();
+
+              
 
                 var items = await filteredQuery
                     .OrderByDescending(x => x.Id)
@@ -248,49 +255,70 @@ namespace ToMainApi.Services
                     .Select(application => new ApplicationDto
                     {
                         Id = application.Id,
-                        VehicleCategoryId = application.VehicleCategoryId,
+
+                        ProvidedDocumentName = application.ProvidedDocument.DisplayName,
+                        ProvidedDocumentSeriesAndNumber = application.ProvidedDocumentSeriesAndNumber,
+                        ProvidedDocumentWhenWasIssued = application.ProvidedDocumentWhenWasIssued,
+                        ProvidedDocumentIssuedBy = application.ProvidedDocumentIssuedBy,
+
+                        IsVinMissing = application.IsVinMissing,
                         VIN = application.VIN,
-                        GosNumber = application.GosNumber,
+                        VehicleYearOfRelease = application.VehicleYearOfRelease,
                         Brand = application.Brand,
                         Model = application.Model,
-                        YearOfRelease = application.YearOfRelease,
+                        GosNumber = application.GosNumber,
+                        VehicleBodyNumber = application.VehicleBodyNumber,
+                        IsChassisNumberMissing = application.IsChassisNumberMissing,
+                        ChassisNumber = application.ChassisNumber,
+                        AdditionalMarking = application.AdditionalMarking,
+                        MassWithoutLoad = application.MassWithoutLoad,
+                        VehicleCategoryBySrts = application.VehicleCategoryBySrts.Name,
+                        VehicleCategoyByOkp = application.VehicleCategoryByOkp.Name,
+                        VehicleMileage = application.VehicleMileage,
+                        AlowedMaximumMass = application.AlowedMaximumMass,
+                        FuelType = application.FuelType,
+                        TypeOfBrakeSystemDrive = application.TypeOfBrakeSystemDrive,
+                        TireBrand = application.TireBrand,
+                        SpecialPurpose = application.SpecialPurpose,
+                        IsTahogramMissing = application.IsTahogramMissing,
+                        BrandOfTachograph = application.BrandOfTachograph,
+                        ModelOfTachograph = application.ModelOfTachograph,
+                        SerialNumberOfTachograph = application.SerialNumberOfTachograph,
+                        IsGasCylinderEquipmentMissing = application.IsGasCylinderEquipmentMissing,
+                        NumberOfGasCylinderEquipment = application.NumberOfGasCylinderEquipment,
+                        DateOfTheNextInspectionGasCylinderEquipment = application.DateOfTheNextInspectionGasCylinderEquipment,
+
+                        IsGasCylinderMissing = application.IsGasCylinderMissing,
+                        GasCylinderYearOfRelease = application.GasCylinderYearOfRelease,
+                        GasCylinderSerialNumber = application.GasCylinderSerialNumber,
+                        DateOfTheLastInspectionGasCylinder = application.DateOfTheLastExaminationGasCylinder,
+                        DateOfTheNextInspectionGasCylinder = application.DateOfTheNextInspectionGasCylinder,
                         FIO = application.FIO,
                         Email = application.Email,
                         PhoneNumber = application.PhoneNumber,
                         PtoId = application.PtoId,
                         CreatedAt = application.CreatedAt,
                         Status = application.Status,
-
                         Photos = application.Photos.Select(p => new ApplicationPhotoDto
                         {
                             Id = p.Id,
                             FileName = $"photo_{p.Id}.jpg",
                             VehiclePhotoType = p.VehiclePhotoType,
                             Url = p.Url
-                        }).ToList(),
-
-                        Documents = application.Documents.Select(d => new ApplicationDocumentDto
-                        {
-                            Id = d.Id,
-                            FileName = $"doc_{d.Id}.pdf",
-                            Type = d.Type,
-                            Url = d.Url
                         }).ToList()
                     })
                     .ToListAsync();
 
-                var result = new PagedResponse<ApplicationDto>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    Page = pagination.Page,
-                    PageSize = pagination.PageSize,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pagination.PageSize)
-                };
-
                 return new ServiceResponse<PagedResponse<ApplicationDto>>
                 {
-                    Data = result,
+                    Data = new PagedResponse<ApplicationDto>
+                    {
+                        Items = items,
+                        TotalCount = totalCount,
+                        Page = pagination.Page,
+                        PageSize = pagination.PageSize,
+                        TotalPages = (int)Math.Ceiling(totalCount / (double)pagination.PageSize)
+                    },
                     Success = true,
                     Message = ResponseMessages.Success
                 };
@@ -306,6 +334,7 @@ namespace ToMainApi.Services
                 };
             }
         }
+
         public async Task<ServiceResponse<bool>> DeleteApplication(DeleteApplicationDto model)
         {
             var existApplication = await _dbcontext.Applications.FirstOrDefaultAsync(x => x.Id == model.Id);
@@ -313,14 +342,16 @@ namespace ToMainApi.Services
             {
                 return new ServiceResponse<bool>
                 {
-                    Success = false
+                    Success = false,
+                    Message = "Заявка не найдена в системе"
                 };
             }
             _dbcontext.Applications.Remove(existApplication);
             await _dbcontext.SaveChangesAsync();
             return new ServiceResponse<bool>
             {
-                Success = true
+                Success = true,
+                Message = ResponseMessages.Success
             };
         }
 

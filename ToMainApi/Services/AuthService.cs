@@ -19,17 +19,15 @@ namespace ToMainApi.Services
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _dbContext;
-        private readonly IEncryptService _encryptService;
         private readonly IRedisService _redisService;
         private readonly IEmailService _emailService;
         private readonly IinvitationService _invitationService;
         private readonly IConfiguration _configuration;
-        public AuthService(AppDbContext dbcontext,IEncryptService encryptService, 
+        public AuthService(AppDbContext dbcontext,
                            IRedisService redisService, 
                            IEmailService emailservice, IinvitationService invitationService,IConfiguration configuration)
         {
             _dbContext = dbcontext;
-            _encryptService = encryptService;
             _redisService = redisService;
             _emailService = emailservice;
             _invitationService = invitationService;
@@ -38,16 +36,44 @@ namespace ToMainApi.Services
 
         public async Task<User> CheckUsers(LoginDto model)
         {
-            if (model.Email != null && model.Password != null)
+            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Password))
+                return null;
+
+            var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == model.Email);
+            if (user == null || !PasswordHasher.Verify(model.Password, user.Password))
+                return null;
+
+            return user;
+        }
+
+        public async Task<UserBlockInfoDto> GetActiveBlockAsync(int userId)
+        {
+            var status = await _dbContext.UserStatuses
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .Select(s => new { s.IsBlocked, s.BlockedUntil })
+                .FirstOrDefaultAsync();
+
+            var isBlocked = status != null
+                && status.IsBlocked
+                && (status.BlockedUntil == null || status.BlockedUntil > DateTime.UtcNow);
+
+            if (!isBlocked)
+                return new UserBlockInfoDto { IsBlocked = false };
+
+            var reason = await _dbContext.UserBlocks
+                .AsNoTracking()
+                .Where(b => b.UserId == userId && b.UnblockedAt == null)
+                .OrderByDescending(b => b.BlockedAt)
+                .Select(b => b.Reason)
+                .FirstOrDefaultAsync();
+
+            return new UserBlockInfoDto
             {
-                var decryptedPassword = _encryptService.Encrypt(model.Password);
-                var result = await _dbContext.Users.Where(x => x.Email == model.Email && x.Password == decryptedPassword).FirstOrDefaultAsync();
-                if(result != null)
-                { 
-                    return result;
-                }
-            }
-            return null;
+                IsBlocked = true,
+                Reason = reason,
+                BlockedUntil = status!.BlockedUntil
+            };
         }
 
         public async Task<ServiceResponse<bool>> SignOut(string refreshtoken)
@@ -58,23 +84,28 @@ namespace ToMainApi.Services
             {
                 _dbContext.Remove(existrefreshtoken);
                 await _dbContext.SaveChangesAsync();
-                return new ServiceResponse<bool>() { Success = true };
+                return new ServiceResponse<bool>() { Success = true, Message = ResponseMessages.Success};
             }
-            return new ServiceResponse<bool>() { Success = false };
+            return new ServiceResponse<bool>() { Success = false, Message = "Токен не найден в системе" };
         }
 
         public async Task<ServiceResponse<int>> CheckRefreshToken(string token)
         {
             if (string.IsNullOrEmpty(token))
-                return new ServiceResponse<int>(){ Success = false, Message = "Нет токена" };
+                return new ServiceResponse<int>() { Success = false, Message = "Нет токена" };
 
             var hashtoken = TokenHasher.HashToken(token);
-            var existuserWithThisToken = await _dbContext.RefreshTokens.AsNoTracking().Where(x => x.Hash == hashtoken).FirstOrDefaultAsync();
-            if(existuserWithThisToken != null)
-            {
-                return new ServiceResponse<int>() { Data = existuserWithThisToken.UserId, Success = true };
-            }
-            return new ServiceResponse<int>() { Success = false, Message = "Токен хуйня иди нахуй" };
+            var existuserWithThisToken = await _dbContext.RefreshTokens
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Hash == hashtoken);
+
+            if (existuserWithThisToken == null)
+                return new ServiceResponse<int>() { Success = false, Message = "Токен не найден" };
+
+            if (existuserWithThisToken.ExpiresAt < DateTime.UtcNow)
+                return new ServiceResponse<int>() { Success = false, Message = "Токен просрочен" };
+
+            return new ServiceResponse<int>() { Data = existuserWithThisToken.UserId, Success = true };
         }
 
         public Task<ServiceResponse<string>> CreateAccessToken(UserDto userdtomodel)
@@ -103,7 +134,7 @@ namespace ToMainApi.Services
                 signingCredentials: creds
             );
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-            return Task.FromResult(new ServiceResponse<string>() { Data = jwt, Success = true });
+            return Task.FromResult(new ServiceResponse<string>() { Data = jwt, Success = true, Message = ResponseMessages.Success });
         }
 
         public async Task<ServiceResponse<AccessAndRefreshTokenModel>> LoginUser(User usermodel)
@@ -154,7 +185,7 @@ namespace ToMainApi.Services
             _dbContext.RefreshTokens.Add(refreshtokenmodel);
             await _dbContext.SaveChangesAsync();
 
-            return new ServiceResponse<AccessAndRefreshTokenModel>() { Data = returnablemodel, Success = true};
+            return new ServiceResponse<AccessAndRefreshTokenModel>() { Data = returnablemodel, Success = true, Message = ResponseMessages.Success};
         }
 
         private string GenerateRefreshToken()
@@ -172,9 +203,9 @@ namespace ToMainApi.Services
             {
                 await _redisService.DeleteAsync(model.RegistrationId);
                 await _redisService.SetStringAsync($"{model.RegistrationId}_CodeConfirmed", "true", TimeSpan.FromDays(1));
-                return new ServiceResponse<bool> { Success = true };
+                return new ServiceResponse<bool> { Success = true, Message = "Код подтверждён" };
             }
-            return new ServiceResponse<bool> { Success = false };
+            return new ServiceResponse<bool> { Success = false, Message = "Неверный или просроченный код" };
         }
 
         public async Task<ServiceResponse<string>> TryRegistration(TryRegistrationDto model)
@@ -240,7 +271,7 @@ namespace ToMainApi.Services
             {
                 Email = registermodel.Email,
                 FIO = registermodel.FIO,
-                Password = _encryptService.Encrypt(registermodel.Password),
+                Password = PasswordHasher.Hash(registermodel.Password),
                 RoleType = Role.Agent,
                 RegDate = DateTime.UtcNow,
                 Status = new UserStatus
@@ -299,7 +330,7 @@ namespace ToMainApi.Services
             {
                 Email = invitation.Email,
                 FIO = model.FIO,
-                Password = _encryptService.Encrypt(model.Password),
+                Password = PasswordHasher.Hash(model.Password),
                 RoleType = invitation.RoleType,
                 RegDate = DateTime.UtcNow,
                 Status = new UserStatus { IsBlocked = false }

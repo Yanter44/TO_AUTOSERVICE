@@ -26,16 +26,15 @@ namespace ToMainApi.Configurations
             builder.Property(x => x.Latitude).IsRequired();
             builder.Property(x => x.Longitude).IsRequired();
 
-            builder.Property(x => x.Login)
-                .IsRequired()
-                .HasMaxLength(100);
+            builder.HasMany(x => x.Experts)
+             .WithOne(e => e.Pto)
+             .HasForeignKey(e => e.PtoId)
+             .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Property(x => x.Password)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            builder.Property(x => x.ApiKey)
-                .HasMaxLength(200);
+            builder.HasOne(x => x.OperatorCryptoKey)
+             .WithOne(k => k.Pto)
+             .HasForeignKey<PtoOperatorCryptoKey>(k => k.PtoId)
+             .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasMany(x => x.PricePolicies)
                 .WithOne(x => x.Pto)

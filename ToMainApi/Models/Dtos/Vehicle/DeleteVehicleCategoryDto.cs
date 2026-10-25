@@ -3,5 +3,7 @@
     public class DeleteVehicleCategoryDto
     {
         public int Id { get; set; }
+        public string VehicleCategoryType { get; set; }
+
     }
 }

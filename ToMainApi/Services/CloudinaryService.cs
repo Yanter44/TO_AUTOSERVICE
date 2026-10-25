@@ -9,6 +9,8 @@ using System.Text;
 using ToMainApi.Common;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Cloudinary;
+using ToMainApi.Models.Dtos.User;
+using ToMainApi.Models.Entities;
 using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Services
@@ -34,84 +36,50 @@ namespace ToMainApi.Services
             _httpclient = httpclient;
             _logger = logger;
         }
-        public async Task<CloudinarySignatureResponse> GenerateSignatureAsync(int userId, CloudinarySignatureRequest request)
+
+        public async Task<CloudinarySignatureResponse> GenerateSignatureAsync(UserContextDto userContext, UploadPhotoScenario scenario)
         {
-            var blockedTypes = new[] {
-                "application/x-msdownload",
-                "application/x-executable",
-                "text/html",
-                "application/javascript",
-                "application/x-php",
-                "application/x-msdos-program",
-                "application/java-archive"
-            };
-
-            if (blockedTypes.Any(b => request.FileType.Contains(b, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new Exception("Загрузка файлов этого типа запрещена");
-            }
-
-            const long maxSize = 10 * 1024 * 1024;
-            if (request.FileSize > maxSize)
-            {
-                throw new Exception($"Файл слишком большой. Максимум {maxSize / 1024 / 1024} MB");
-            }
-
-            var cloudName = _configuration["CloudinaryService:Cloud"];
-            var apiKey = _configuration["CloudinaryService:ApiKey"];
-            var apiSecret = _configuration["CloudinaryService:ApiSecret"];
-
-            var account = new Account(cloudName, apiKey, apiSecret);
-            var cloudinary = new Cloudinary(account);
+            var p = BuildUploadParams(userContext, scenario);
 
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var folder = $"applications/{userId}/{DateTime.UtcNow:yyyy-MM-dd}";
-            var uploadPreset = "agentUploads";
 
             var parameters = new Dictionary<string, object>
             {
+                { "folder", p.Folder },
                 { "timestamp", timestamp },
-                { "upload_preset", uploadPreset },
             };
 
-            var signature = cloudinary.Api.SignParameters(parameters);
+            var signature = _cloudinary.Api.SignParameters(parameters);
 
             return new CloudinarySignatureResponse
             {
                 Signature = signature,
                 Timestamp = timestamp,
-                ApiKey = apiKey,
-                CloudName = cloudName,
-                Folder = folder,
-                UploadPreset = uploadPreset,
-                MaxFileSize = maxSize
+                ApiKey = _configuration["CloudinaryService:ApiKey"],
+                CloudName = _configuration["CloudinaryService:Cloud"],
+                Folder = p.Folder,
+                UploadPreset = p.UploadPreset
             };
         }
 
-        public async Task<string> UploadFileAsync(IFormFile file)
+        private static CloudinaryUploadParams BuildUploadParams(UserContextDto user, UploadPhotoScenario scenario)
         {
-            using var stream = file.OpenReadStream();
+            var date = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
-            var extension = Path.GetExtension(file.FileName);
-
-            var fileName = $"{Guid.NewGuid()}{extension}";
-
-            var uploadParams = new RawUploadParams()
+            return scenario switch
             {
-                Folder = "applications/documents",
-                File = new FileDescription(fileName, stream)
+                UploadPhotoScenario.AgentUploadApplicationPhoto => new CloudinaryUploadParams
+                {
+                    Folder = $"applicationPhotos/{user.Id}/photos",
+                },
+                UploadPhotoScenario.AdminUploadLibraryPhoto => new CloudinaryUploadParams
+                {
+                    Folder = $"photoLibrary/photos",
+                },
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(scenario), $"Неизвестный сценарий: {scenario}")
             };
-
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-            if (uploadResult.StatusCode == HttpStatusCode.OK)
-            {
-                return uploadResult.SecureUrl.ToString();
-            }
-
-            throw new Exception("Ошибка загрузки документа");
         }
-
         public async Task<ServiceResponse<bool>> DeleteImageByUrl(string photoUrl)
         {
             if (string.IsNullOrWhiteSpace(photoUrl))
@@ -158,24 +126,7 @@ namespace ToMainApi.Services
                 };
             }
         }
-        private static string? ExtractPublicId(string url)
-        {
-            var marker = "/upload/";
-            var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-            if (idx < 0) return null;
 
-            var path = url[(idx + marker.Length)..];
-            if (path.StartsWith("v"))
-            {
-                var slash = path.IndexOf('/');
-                if (slash > 0 && long.TryParse(path[1..slash], out _))
-                    path = path[(slash + 1)..];
-            }
-            var dot = path.LastIndexOf('.');
-            if (dot > 0) path = path[..dot];
-
-            return path;
-        }
         public async Task<ServiceResponse<MemoryStream>> DownloadPhotoAsStreamAsync(string photoUrl)
         {
             if (string.IsNullOrWhiteSpace(photoUrl))
@@ -210,29 +161,6 @@ namespace ToMainApi.Services
                 };
             }
         }
-        public async Task<string> UploadImageAsync(IFormFile file)
-        {
-            using var stream = file.OpenReadStream();
-
-            var extension = Path.GetExtension(file.FileName);
-
-            var fileName = $"{Guid.NewGuid()}{extension}";
-
-            var uploadParams = new ImageUploadParams()
-            {
-                Folder = "applications/photos",
-                File = new FileDescription(fileName, stream)
-            };
-
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-            if (uploadResult.StatusCode == HttpStatusCode.OK)
-            {
-                return uploadResult.SecureUrl.ToString();
-            }
-
-            throw new Exception("Ошибка загрузки изображения");
-        }
 
         public async Task<ServiceResponse<string>> UploadImageAsync(string base64Image)
         {
@@ -259,7 +187,7 @@ namespace ToMainApi.Services
                     {
                         Data = uploadResult.SecureUrl.ToString(),
                         Success = true,
-                        Message = "Успешно загрузили фото"
+                        Message = ResponseMessages.Success
                     };
                 }
 
@@ -268,8 +196,26 @@ namespace ToMainApi.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Произошла ошибка при попытке загрузить фото");
-                return new ServiceResponse<string>() { Data = null, Success = false };
+                return new ServiceResponse<string>() { Data = null, Success = false, Message = "Не удалось загрузить фото" };
             }
+        }
+        private static string? ExtractPublicId(string url)
+        {
+            var marker = "/upload/";
+            var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+
+            var path = url[(idx + marker.Length)..];
+            if (path.StartsWith("v"))
+            {
+                var slash = path.IndexOf('/');
+                if (slash > 0 && long.TryParse(path[1..slash], out _))
+                    path = path[(slash + 1)..];
+            }
+            var dot = path.LastIndexOf('.');
+            if (dot > 0) path = path[..dot];
+
+            return path;
         }
     }
 }

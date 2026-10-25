@@ -11,6 +11,7 @@ namespace ToMainApi.Models.Entities
 
         public string VehiclePhotoType { get; set; }
 
-        public string Url { get; set; }   
+        public string Url { get; set; }
+        public string? ProcessedUrl { get; set; }
     }
 }

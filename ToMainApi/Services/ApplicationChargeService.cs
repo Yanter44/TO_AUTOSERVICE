@@ -39,7 +39,7 @@ namespace ToMainApi.Services
 
             var wallet = application.Agent.Wallet;
 
-            var price = await GetPtoPriceForApplication(application.PtoId, application.VehicleCategoryId);
+            var price = await GetPtoPriceForApplication(application.PtoId, application.VehicleCategoryBySrtsId);
             decimal fromBalance, fromCredit;
 
             if (wallet.Balance >= price)
@@ -94,7 +94,7 @@ namespace ToMainApi.Services
         }
         private async Task<decimal> GetPtoPriceForApplication(int ptoId, int vehicleCategoryId)
         {
-            var price = await _dbcontext.PtoPolicies.Where(x => x.PtoId == ptoId && x.VehicleCategoryId == vehicleCategoryId)
+            var price = await _dbcontext.PtoPolicies.Where(x => x.PtoId == ptoId && x.VehicleCategoryBySrtsId == vehicleCategoryId)
                                                     .Select(x => x.Price).FirstOrDefaultAsync();
             return price;
         }

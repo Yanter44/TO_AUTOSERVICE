@@ -1,5 +1,6 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
+using System.Globalization;
 using System.Text;
+using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Features.Support;
 using ToMainApi.Interfaces;
@@ -19,11 +22,15 @@ using ToMainApi.Services.Cache;
 using ToMainApi.Services.Crypt;
 using ToMainApi.Services.Mail;
 using ToMainApi.Services.Notifications;
+using Shared.ApplicationContracts;
+using ToMainApi.Services.RabbitMq.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
+var culture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentCulture = culture;
+CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 builder.Services.AddControllers();
-builder.Services.AddSwaggerGen();
 var key = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
@@ -96,47 +103,51 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowLocalhost8000",
-//        policy =>
-//        {
-//            policy.WithOrigins("http://localhost:8000")
-//                  .AllowAnyHeader()
-//                  .AllowAnyMethod()
-//                  .AllowCredentials();
-//        });
-//});
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowLocalhost4200",
-//        policy =>
-//        {
-//            policy.WithOrigins("http://localhost:4200")
-//                  .AllowAnyHeader()
-//                  .AllowAnyMethod()
-//                  .AllowCredentials();
-//        });
-//});
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost4200",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
-        foreach (var kv in context.ModelState)
+        var errors = context.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .SelectMany(e => e.Value!.Errors.Select(x =>
+                string.IsNullOrWhiteSpace(x.ErrorMessage) ? "Некорректное значение" : x.ErrorMessage))
+            .Distinct()
+            .ToList();
+        var response = new ServiceResponse<object>
         {
-            Console.WriteLine($"Поле: {kv.Key}");
-
-            foreach (var error in kv.Value.Errors)
-            {
-                Console.WriteLine($"Ошибка: {error.ErrorMessage}");
-
-                if (error.Exception != null)
-                    Console.WriteLine(error.Exception);
-            }
-        }
-        return new BadRequestObjectResult(context.ModelState);
+            Success = false,
+            Message = errors.Count == 0 ? "Некорректные данные запроса" : string.Join("; ", errors),
+            Data = null
+        };
+        return new BadRequestObjectResult(response);
     };
 });
+//builder.Services.AddMassTransit(x =>
+//{
+//    x.AddConsumer<DiagnosticCardConsumer>();
+//    x.AddConsumer<ApplicationRejectedConsumer>();
+
+//    x.UsingRabbitMq((context, cfg) =>
+//    {
+//        cfg.Host("localhost", "/", h =>
+//        {
+//            h.Username("guest");
+//            h.Password("guest");
+//        });
+//        cfg.ConfigureEndpoints(context);
+//    });
+//});
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -149,23 +160,25 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     return ConnectionMultiplexer.Connect(redisconnectionstring);
 });
 builder.Services.AddSingleton<IRedisService, RedisService>();
+builder.Services.AddSingleton<IInfisicalService, InfisicalService>();
+
 builder.Services.AddHttpClient<IEmailService, MailerSendService>();
 builder.Services.AddTransient<IEncryptService, AesEncryptionService>();
-builder.Services.AddTransient<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAgentService, AgentService>();
-builder.Services.AddTransient<IAdminService, AdminService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddHttpClient<ICloudinaryService, CloudinaryService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
 });
-builder.Services.AddTransient<IModeratorService, ModeratorService>();
+builder.Services.AddScoped<IModeratorService, ModeratorService>();
 builder.Services.AddScoped<IPromptService, PromptService>();
 builder.Services.AddScoped<IPtoService, PtoService>();
-builder.Services.AddTransient<IApplicationService, ApplicationService>();
-builder.Services.AddTransient<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddTransient<IPhotoUploadRequirementService, PhotoUploadRequirementService>();
-builder.Services.AddTransient<IDocumentUploadRequirementService, DocumentUploadRequirementService>();
+builder.Services.AddScoped<IPhotoUploadRequirementService, PhotoUploadRequirementService>();
+builder.Services.AddScoped<IDocumentUploadRequirementService, DocumentUploadRequirementService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IApplicationNotificationService, ApplicationNotificationsService>();
 builder.Services.AddScoped<IPaymentNotificationService, PaymentsNotificationsService>();
@@ -173,6 +186,7 @@ builder.Services.AddScoped<IApplicationChargeService, ApplicationChargeService>(
 builder.Services.AddScoped<IPhotoGalleryService, PhotoGalleryService>();
 builder.Services.AddScoped<IinvitationService, InvitationService>();
 builder.Services.AddScoped<IRefferalService, RefferalService>();
+builder.Services.AddScoped<IArchiveCryptoService, ArchiveCryptoService>();
 
 builder.Services.AddScoped<INotificationsSender,NotificationSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -189,25 +203,44 @@ builder.Services.AddTransient<ICoordinateFormatConverterService, CoordinateForma
 builder.Services.AddTransient<IimageTextOverlayService, ImageTextOverlayService>();
 builder.Services.AddTransient<IApplicationPhotoService, ApplicationPhotoService>();
 builder.Services.AddTransient<IImageValidator, ImageValidator>();
+
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
-builder.Services.AddHostedService<EaistoWorkerService>();
+//builder.Services.AddHostedService<PhotoProcessorForApplicationsService>();
+//builder.Services.AddHostedService<ApplicationPublisherWorker>();
+
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddSignalR();
 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB
 });
 
 var app = builder.Build();
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("GlobalException");
+        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+        if (error != null)
+            logger.LogError(error, "Необработанная ошибка");
 
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new ServiceResponse<object>
+        {
+            Success = false,
+            Message = ResponseMessages.Error
+        });
+    });
+});
 await DbInitializer.SeedAdminAsync(app);
 await DbInitializer.SeedVehicleCategories(app);
-//app.UseCors("AllowLocalhost8000");
-//app.UseCors("AllowLocalhost4200");
+app.UseCors("AllowLocalhost4200");
 
-app.MapHub<NotificationHub>("/notificationHub");
 
 app.UseAuthentication();
 app.UseMiddleware<BlockedUserMiddleware>();
@@ -222,6 +255,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.MapHub<NotificationHub>("/notificationHub");
 app.MapControllers();
 
 app.Run();

@@ -27,7 +27,7 @@ namespace ToMainApi.Controllers
             var result = await _ptoservice.GetAllPtos();
             if (result.Success)
                 return Ok(result.Data);
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
 
         [Authorize]
@@ -45,7 +45,7 @@ namespace ToMainApi.Controllers
 
         [Authorize(Roles ="Admin,Moderator")]
         [HttpPost("AddNewPto")]
-        public async Task<IActionResult> AddNewPto([FromBody] AddNewPtoDto model)
+        public async Task<IActionResult> AddNewPto([FromForm] AddNewPtoDto model)
         {
             var result = await _ptoservice.AddNewPto(model);
             if (result.Success)
@@ -59,8 +59,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _ptoservice.DeletePtoAsync(ptoId);
             if (result.Success)
-                return Ok();
-            return BadRequest(result.Message);
+                return Ok(result);
+            return BadRequest(result);
         }
 
         [Authorize(Roles = "Admin,Moderator")]
@@ -70,7 +70,7 @@ namespace ToMainApi.Controllers
             var result = await _ptoservice.UpdatePto(model);
             if (result.Success)
                 return Ok();
-            return BadRequest(result.Message);
+            return BadRequest(result);
         }
     }
 }

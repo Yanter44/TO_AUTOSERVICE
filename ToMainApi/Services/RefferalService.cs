@@ -133,7 +133,7 @@ namespace ToMainApi.Services
                     Fee = branchDtoModel.Fee,
                     MemberCount = 0
                 };
-                return new ServiceResponse<BranchDto>() { Data = branchmodel, Success = true, Message = "Успешно создана ветка" };
+                return new ServiceResponse<BranchDto>() { Data = branchmodel, Success = true, Message = ResponseMessages.Success };
             }
             catch (Exception ex)
             {

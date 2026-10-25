@@ -2,7 +2,7 @@
 {
     public class PtoPricePolicyDto
     {
-        public int VehicleCategoryId { get; set; }
+        public int VehicleCategoriesBySrtsId { get; set; }
         public decimal Price { get; set; }
     }
 }

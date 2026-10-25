@@ -35,7 +35,7 @@ namespace ToMainApi.Services
                 {
                     Data = returnmodel,
                     Success = true,
-                    Message = "Успешно изменено требование"
+                    Message = ResponseMessages.Success
                 };
             }
             return new ServiceResponse<PhotoRequireDto>()
@@ -98,7 +98,7 @@ namespace ToMainApi.Services
             {
                 Data = resultDto,
                 Success = true,
-                Message = "Новое требование к фотографии успешно добавлено."
+                Message = ResponseMessages.Success
             };
         }
         public async Task<ServiceResponse<bool>> DeletePhotoRequirement(int photorequirementId)
@@ -108,9 +108,9 @@ namespace ToMainApi.Services
             {
                  _dbContext.Remove(existrequirement);
                 await _dbContext.SaveChangesAsync();
-                return new ServiceResponse<bool>() { Success = true };
+                return new ServiceResponse<bool>() { Success = true, Message = "Требование удалено" };
             }
-            return new ServiceResponse<bool>() { Success = false };
+            return new ServiceResponse<bool>() { Success = false, Message = "Требование не найдено" };
         }
     }
 }

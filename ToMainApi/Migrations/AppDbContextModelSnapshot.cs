@@ -118,7 +118,13 @@ namespace ToMainApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AdditionalMarking")
+                        .HasColumnType("integer");
+
                     b.Property<int>("AgentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AlowedMaximumMass")
                         .HasColumnType("integer");
 
                     b.Property<string>("Brand")
@@ -126,8 +132,23 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("BrandOfTachograph")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ChassisNumber")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DateOfTheLastExaminationGasCylinder")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("DateOfTheNextInspectionGasCylinder")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("DateOfTheNextInspectionGasCylinderEquipment")
+                        .HasColumnType("date");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -139,20 +160,68 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("FuelType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("GasCylinderSerialNumber")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("GasCylinderYearOfRelease")
+                        .HasColumnType("integer");
+
                     b.Property<string>("GosNumber")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
+
+                    b.Property<bool>("IsChassisNumberMissing")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsGasCylinderEquipmentMissing")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsGasCylinderMissing")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsTahogramMissing")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVinMissing")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MassWithoutLoad")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ModelOfTachograph")
+                        .HasColumnType("text");
+
+                    b.Property<string>("NumberOfGasCylinderEquipment")
+                        .HasColumnType("text");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<int>("ProvidedDocumentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProvidedDocumentIssuedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProvidedDocumentSeriesAndNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("ProvidedDocumentWhenWasIssued")
+                        .HasColumnType("date");
 
                     b.Property<int>("PtoId")
                         .HasColumnType("integer");
@@ -161,7 +230,21 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("SerialNumberOfTachograph")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SpecialPurpose")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TireBrand")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TypeOfBrakeSystemDrive")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -170,10 +253,20 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(17)
                         .HasColumnType("character varying(17)");
 
-                    b.Property<int>("VehicleCategoryId")
+                    b.Property<string>("VehicleBodyNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("VehicleCategoryByOkpId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("YearOfRelease")
+                    b.Property<int>("VehicleCategoryBySrtsId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VehicleMileage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VehicleYearOfRelease")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -184,42 +277,17 @@ namespace ToMainApi.Migrations
 
                     b.HasIndex("GosNumber");
 
+                    b.HasIndex("ProvidedDocumentId");
+
                     b.HasIndex("PtoId");
 
                     b.HasIndex("VIN");
 
-                    b.HasIndex("VehicleCategoryId");
+                    b.HasIndex("VehicleCategoryByOkpId");
+
+                    b.HasIndex("VehicleCategoryBySrtsId");
 
                     b.ToTable("Applications");
-                });
-
-            modelBuilder.Entity("ToMainApi.Models.Entities.ApplicationDocument", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ApplicationId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApplicationId");
-
-                    b.HasIndex("Type");
-
-                    b.ToTable("ApplicationDocuments");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.ApplicationPhoto", b =>
@@ -232,6 +300,9 @@ namespace ToMainApi.Migrations
 
                     b.Property<int>("ApplicationId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ProcessedUrl")
+                        .HasColumnType("text");
 
                     b.Property<string>("Url")
                         .IsRequired()
@@ -251,7 +322,7 @@ namespace ToMainApi.Migrations
                     b.ToTable("ApplicationPhotos");
                 });
 
-            modelBuilder.Entity("ToMainApi.Models.Entities.DocumentUploadRequire", b =>
+            modelBuilder.Entity("ToMainApi.Models.Entities.ApplicationProvidedDocument", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -268,12 +339,9 @@ namespace ToMainApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("IsRequire")
-                        .HasColumnType("boolean");
-
                     b.HasKey("Id");
 
-                    b.ToTable("DocumentUploadRequires");
+                    b.ToTable("ApplicationProvidedDocuments");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.ModeratorProfile", b =>
@@ -453,11 +521,6 @@ namespace ToMainApi.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<string>("ApiKey")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -470,20 +533,10 @@ namespace ToMainApi.Migrations
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("Login")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<double>("Longitude")
                         .HasColumnType("double precision");
 
                     b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Password")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -496,6 +549,85 @@ namespace ToMainApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Ptos");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoExpert", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("PtoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PtoId");
+
+                    b.ToTable("PtoExperts");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoExpertCryptoKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("EncryptedData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("ExpertId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpertId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PtoExpertCryptoKeys_ExpertId");
+
+                    b.ToTable("PtoExpertCryptoKeys");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoOperatorCryptoKey", b =>
+                {
+                    b.Property<int>("PtoId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("EncryptedData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("PtoId");
+
+                    b.ToTable("PtoOperatorExpertCryptoKeys");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.PtoPricePolicy", b =>
@@ -513,14 +645,14 @@ namespace ToMainApi.Migrations
                     b.Property<int>("PtoId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("VehicleCategoryId")
+                    b.Property<int>("VehicleCategoryBySrtsId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VehicleCategoryId");
+                    b.HasIndex("VehicleCategoryBySrtsId");
 
-                    b.HasIndex("PtoId", "VehicleCategoryId")
+                    b.HasIndex("PtoId", "VehicleCategoryBySrtsId")
                         .IsUnique();
 
                     b.ToTable("PtoPolicies");
@@ -811,7 +943,28 @@ namespace ToMainApi.Migrations
                     b.ToTable("UserStatuses");
                 });
 
-            modelBuilder.Entity("ToMainApi.Models.Entities.VehicleCategory", b =>
+            modelBuilder.Entity("ToMainApi.Models.Entities.VehicleCategoryByOkp", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("VehicleCategoriesByOkp");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.VehicleCategoryBySrts", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -833,7 +986,7 @@ namespace ToMainApi.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("VehicleCategories");
+                    b.ToTable("VehicleCategoriesBySrts");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Wallet", b =>
@@ -921,34 +1074,39 @@ namespace ToMainApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ToMainApi.Models.Entities.ApplicationProvidedDocument", "ProvidedDocument")
+                        .WithMany()
+                        .HasForeignKey("ProvidedDocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ToMainApi.Models.Entities.Pto", "Pto")
                         .WithMany()
                         .HasForeignKey("PtoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("ToMainApi.Models.Entities.VehicleCategory", "VehicleCategory")
+                    b.HasOne("ToMainApi.Models.Entities.VehicleCategoryByOkp", "VehicleCategoryByOkp")
                         .WithMany()
-                        .HasForeignKey("VehicleCategoryId")
+                        .HasForeignKey("VehicleCategoryByOkpId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ToMainApi.Models.Entities.VehicleCategoryBySrts", "VehicleCategoryBySrts")
+                        .WithMany()
+                        .HasForeignKey("VehicleCategoryBySrtsId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Agent");
 
+                    b.Navigation("ProvidedDocument");
+
                     b.Navigation("Pto");
 
-                    b.Navigation("VehicleCategory");
-                });
+                    b.Navigation("VehicleCategoryByOkp");
 
-            modelBuilder.Entity("ToMainApi.Models.Entities.ApplicationDocument", b =>
-                {
-                    b.HasOne("ToMainApi.Models.Entities.Application", "Application")
-                        .WithMany("Documents")
-                        .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Application");
+                    b.Navigation("VehicleCategoryBySrts");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.ApplicationPhoto", b =>
@@ -1003,6 +1161,39 @@ namespace ToMainApi.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoExpert", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.Pto", "Pto")
+                        .WithMany("Experts")
+                        .HasForeignKey("PtoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pto");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoExpertCryptoKey", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.PtoExpert", "Expert")
+                        .WithOne("CryptoKey")
+                        .HasForeignKey("ToMainApi.Models.Entities.PtoExpertCryptoKey", "ExpertId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Expert");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoOperatorCryptoKey", b =>
+                {
+                    b.HasOne("ToMainApi.Models.Entities.Pto", "Pto")
+                        .WithOne("OperatorCryptoKey")
+                        .HasForeignKey("ToMainApi.Models.Entities.PtoOperatorCryptoKey", "PtoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pto");
+                });
+
             modelBuilder.Entity("ToMainApi.Models.Entities.PtoPricePolicy", b =>
                 {
                     b.HasOne("ToMainApi.Models.Entities.Pto", "Pto")
@@ -1011,15 +1202,15 @@ namespace ToMainApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ToMainApi.Models.Entities.VehicleCategory", "VehicleCategory")
+                    b.HasOne("ToMainApi.Models.Entities.VehicleCategoryBySrts", "VehicleCategoryBySrts")
                         .WithMany()
-                        .HasForeignKey("VehicleCategoryId")
+                        .HasForeignKey("VehicleCategoryBySrtsId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Pto");
 
-                    b.Navigation("VehicleCategory");
+                    b.Navigation("VehicleCategoryBySrts");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.RefreshToken", b =>
@@ -1126,8 +1317,6 @@ namespace ToMainApi.Migrations
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Application", b =>
                 {
-                    b.Navigation("Documents");
-
                     b.Navigation("Photos");
                 });
 
@@ -1138,7 +1327,16 @@ namespace ToMainApi.Migrations
 
             modelBuilder.Entity("ToMainApi.Models.Entities.Pto", b =>
                 {
+                    b.Navigation("Experts");
+
+                    b.Navigation("OperatorCryptoKey");
+
                     b.Navigation("PricePolicies");
+                });
+
+            modelBuilder.Entity("ToMainApi.Models.Entities.PtoExpert", b =>
+                {
+                    b.Navigation("CryptoKey");
                 });
 
             modelBuilder.Entity("ToMainApi.Models.Entities.User", b =>

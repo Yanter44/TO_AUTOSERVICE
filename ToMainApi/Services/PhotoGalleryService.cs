@@ -91,6 +91,8 @@ namespace ToMainApi.Services
                 await _dbcontext.SaveChangesAsync();
 
                 response.Data = true;
+                response.Success = true;
+                response.Message = "Фото удалено";
                 return response;
             }
             catch (Exception ex)
@@ -158,7 +160,7 @@ namespace ToMainApi.Services
                         CreatedAt = photo.CreatedAt
                     },
                     Success = true,
-                    Message = "Успешно добавили новое изображение"
+                    Message = ResponseMessages.Success
                 };
             }
             catch (Exception ex)

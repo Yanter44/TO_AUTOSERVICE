@@ -10,8 +10,8 @@ namespace ToMainApi.Interfaces
     public interface IApplicationService
     {
         Task<ServiceResponse<PagedResponse<ApplicationDto>>> GetApplications(UserContextDto userContext, PaginationDto pagination);
-        Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto usercontextmodel);
-        Task CreateNewApplication(int UserId, CreateNewApplicationDto model);
+        Task<ServiceResponse<ApplicationsMetricsDto>> GetApplicationsMetrics(UserContextDto userContext);
+        Task<ServiceResponse<ApplicationDto>> CreateNewApplication(UserContextDto userContext, CreateNewApplicationDto model);
         Task<ServiceResponse<bool>> DeleteApplication(DeleteApplicationDto model);
         Task<ServiceResponse<bool>> AcceptApplication(AcceptApplicationDto model);
         Task<ServiceResponse<bool>> RejectApplication(RejectApplicationDto model);

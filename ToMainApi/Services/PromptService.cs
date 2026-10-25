@@ -130,7 +130,7 @@ namespace ToMainApi.Services
             {
                 Data = dto,
                 Success = true,
-                Message = "Промпт успешно добавлен"
+                Message = ResponseMessages.Success
             };
         }
         public async Task<ServiceResponse<bool>> DeletePromptAsync(int UserId, int promptId)
@@ -189,7 +189,7 @@ namespace ToMainApi.Services
             {
                 Data = dto,
                 Success = true,
-                Message = "Промпт успешно обновлен"
+                Message = ResponseMessages.Success
             };
         }
     }

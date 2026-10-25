@@ -32,7 +32,8 @@ namespace ToMainApi.Services.Cache
             try
             {
                 var cached = await _redis.GetObjectAsync<UserBlockInfoDto>(key);
-                if (cached != null) return cached;
+                if (cached != null && !BlockExpired(cached))
+                    return cached;
             }
             catch (Exception ex)
             {
@@ -82,11 +83,14 @@ namespace ToMainApi.Services.Cache
             return info;
         }
 
+        private static bool BlockExpired(UserBlockInfoDto info) =>
+            info.IsBlocked && info.BlockedUntil is DateTime until && until <= DateTime.UtcNow;
+
         public async Task InvalidateAsync(int userId)
         {
             try
             {
-                await _redis.DeleteAsync($"user_blocked:{userId}");
+                await _redis.DeleteAsync($"user_block:{userId}");
             }
             catch (Exception ex)
             {

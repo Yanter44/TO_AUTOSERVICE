@@ -19,12 +19,12 @@ namespace ToMainApi.Configurations
                 .HasForeignKey(x => x.PtoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasOne(x => x.VehicleCategory)
+            builder.HasOne(x => x.VehicleCategoryBySrts)
                 .WithMany()
-                .HasForeignKey(x => x.VehicleCategoryId)
+                .HasForeignKey(x => x.VehicleCategoryBySrtsId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasIndex(x => new { x.PtoId, x.VehicleCategoryId })
+            builder.HasIndex(x => new { x.PtoId, x.VehicleCategoryBySrtsId })
                 .IsUnique();
         }
     }

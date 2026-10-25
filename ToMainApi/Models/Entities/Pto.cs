@@ -12,14 +12,11 @@
         public double Latitude { get; set; }
         public double Longitude { get; set; }
 
-        //IntergrationWithEAI
-        public string Login { get; set; }
-        public string Password { get; set; }
-        public string ApiKey { get; set; }
-
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAt { get; set; }
         public bool IsActive { get; set; } = true;
         public List<PtoPricePolicy> PricePolicies { get; set; }
+        public List<PtoExpert> Experts { get; set; } = new();
+        public PtoOperatorCryptoKey? OperatorCryptoKey { get; set; }
     }
 }

@@ -55,6 +55,10 @@ namespace ToMainApi.Services
                     };
                 }
 
+                var payDebt = Math.Min(wallet.CurrentDebt, request.Amount);
+                wallet.CurrentDebt -= payDebt;
+                wallet.Balance += request.Amount - payDebt;
+
                 _dbcontext.Transactions.Add(new Transaction
                 {
                     ExternalId = Guid.NewGuid(),
@@ -66,15 +70,6 @@ namespace ToMainApi.Services
                     TransactionStatus = TransactionStatus.Completed.ToString(),
                     CreatedAt = DateTime.UtcNow
                 });
-
-                await _dbcontext.SaveChangesAsync();
-                var balance = await _dbcontext.Transactions.Where(x => x.WalletId == wallet.Id).SumAsync(x =>
-                                                            x.TransactionType == TransactionType.Credit.ToString()
-                                                            ? x.Amount
-                                                            : -x.Amount);
-
-                var agentWallet = await _dbcontext.Wallets.Where(x => x.Id == wallet.Id).FirstOrDefaultAsync();
-                agentWallet.Balance = balance;
                 await _dbcontext.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
 
@@ -84,17 +79,18 @@ namespace ToMainApi.Services
                 {
                     Success = true,
                     Data = true,
-                    Message = "Баланс успешно пополнен"
+                    Message = ResponseMessages.Success
                 };
             }
             catch (Exception ex)
             {
                 await dbTransaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка пополнения баланса агента {AgentId}", request.AgentId);
 
                 return new ServiceResponse<bool>
                 {
                     Success = false,
-                    Message = ex.Message
+                    Message = ResponseMessages.Error
                 };
             }
         }
@@ -102,11 +98,9 @@ namespace ToMainApi.Services
         public async Task<ServiceResponse<bool>> Debit(DebitRequest request)
         {
             using var dbTransaction = await _dbcontext.Database.BeginTransactionAsync();
-
             try
             {
                 var wallet = await _dbcontext.Wallets.FirstOrDefaultAsync(w => w.Agent.UserId == request.AgentId);
-
                 if (wallet == null)
                 {
                     return new ServiceResponse<bool>
@@ -127,12 +121,9 @@ namespace ToMainApi.Services
                         Message = "Данная операция уже была выполнена"
                     };
                 }
-
-                var currentBalance = await _dbcontext.Transactions
-                    .Where(x => x.WalletId == wallet.Id)
-                    .SumAsync(x => x.TransactionType == TransactionType.Credit.ToString() ? x.Amount : -x.Amount);
-
-                if (currentBalance < request.Amount)
+                var cash = Math.Max(wallet.Balance, 0);
+                var freeCredit = Math.Max(wallet.DebtLimit - wallet.CurrentDebt, 0);
+                if (cash + freeCredit < request.Amount)
                 {
                     return new ServiceResponse<bool>
                     {
@@ -140,6 +131,10 @@ namespace ToMainApi.Services
                         Message = "Недостаточно средств"
                     };
                 }
+                var fromBalance = Math.Min(cash, request.Amount);
+                var fromCredit = request.Amount - fromBalance;
+                wallet.Balance -= fromBalance;
+                wallet.CurrentDebt += fromCredit;
 
                 _dbcontext.Transactions.Add(new Transaction
                 {
@@ -154,31 +149,24 @@ namespace ToMainApi.Services
                 });
 
                 await _dbcontext.SaveChangesAsync();
-                var balance = await _dbcontext.Transactions.Where(x => x.WalletId == wallet.Id).SumAsync(x =>
-                                                       x.TransactionType == TransactionType.Credit.ToString()
-                                                       ? x.Amount
-                                                       : -x.Amount);
-
-                var agentWallet = await _dbcontext.Wallets.Where(x => x.Id == wallet.Id).FirstOrDefaultAsync();
-                agentWallet.Balance = balance;
-                await _dbcontext.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
                 await _mediator.Publish(new DebitBalanceEvent(request.AgentId, request.Amount));
                 return new ServiceResponse<bool>
                 {
                     Success = true,
                     Data = true,
-                    Message = "Списание выполнено успешно"
+                    Message = ResponseMessages.Success
                 };
             }
             catch (Exception ex)
             {
                 await dbTransaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка списания с баланса агента {AgentId}", request.AgentId);
 
                 return new ServiceResponse<bool>
                 {
                     Success = false,
-                    Message = ex.Message
+                    Message = ResponseMessages.Error
                 };
             }
         }

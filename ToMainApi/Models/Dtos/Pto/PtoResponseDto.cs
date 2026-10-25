@@ -11,6 +11,8 @@
         public double Latitude { get; set; }
         public double Longitude { get; set; }
 
+        public List<PtoExpertDto> PtoExperts { get; set; }
+
         public List<PtoPricePolicyDto> PricePolicies { get; set; }
     }
 }

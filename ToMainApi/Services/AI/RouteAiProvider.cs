@@ -12,12 +12,14 @@ namespace ToMainApi.Services.AI
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<RouteAiProvider> _logger;
         private readonly string _apiKey;
         private readonly string _baseUrl;
-        public RouteAiProvider(HttpClient httpClient, IConfiguration configuration)
+        public RouteAiProvider(HttpClient httpClient, IConfiguration configuration, ILogger<RouteAiProvider> logger)
         {
             _httpClient = httpClient;
             _configuration = configuration;
+            _logger = logger;
 
             _baseUrl = _configuration["RouteAiApi:BaseUrl"];
             _apiKey = _configuration["RouteAiApi:ApiKey"];
@@ -87,10 +89,11 @@ namespace ToMainApi.Services.AI
 
                 if (!httpResponse.IsSuccessStatusCode)
                 {
+                    _logger.LogError("RouterAI вернул {StatusCode}: {Body}", httpResponse.StatusCode, jsonResponse);
                     return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
-                        Message = $"API Ошибка ({httpResponse.StatusCode}): {jsonResponse}"
+                        Message = "Не удалось сгенерировать изображение"
                     };
                 }
 
@@ -99,10 +102,11 @@ namespace ToMainApi.Services.AI
 
                 if (root.TryGetProperty("error", out var errorElement))
                 {
+                    _logger.LogError("RouterAI вернул ошибку: {Error}", errorElement.ToString());
                     return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
-                        Message = $"API error: {errorElement}"
+                        Message = "Не удалось сгенерировать изображение"
                     };
                 }
 
@@ -110,10 +114,11 @@ namespace ToMainApi.Services.AI
                     dataElement.ValueKind != JsonValueKind.Array ||
                     dataElement.GetArrayLength() == 0)
                 {
+                    _logger.LogError("В ответе RouterAI нет data: {Body}", jsonResponse);
                     return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
-                        Message = $"В ответе нет data: {jsonResponse}"
+                        Message = "Не удалось сгенерировать изображение"
                     };
                 }
 
@@ -121,10 +126,11 @@ namespace ToMainApi.Services.AI
 
                 if (!first.TryGetProperty("b64_json", out var b64Element))
                 {
+                    _logger.LogError("В ответе RouterAI нет b64_json: {Body}", jsonResponse);
                     return new ServiceResponse<GeneratePhotoResponse>
                     {
                         Success = false,
-                        Message = $"В data[0] нет b64_json: {jsonResponse}"
+                        Message = "Не удалось сгенерировать изображение"
                     };
                 }
 
@@ -142,15 +148,16 @@ namespace ToMainApi.Services.AI
                 {
                     Data = new GeneratePhotoResponse { ImageBase64 = base64Data },
                     Success = true,
-                    Message = "Изображение успешно сгенерировано через RouterAI"
+                    Message = ResponseMessages.Success
                 };
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Ошибка генерации изображения через RouterAI");
                 return new ServiceResponse<GeneratePhotoResponse>
                 {
                     Success = false,
-                    Message = $"Произошла ошибка: {ex.Message}"
+                    Message = ResponseMessages.Error
                 };
             }
         }

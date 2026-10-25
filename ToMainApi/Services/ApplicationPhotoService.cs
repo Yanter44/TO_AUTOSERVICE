@@ -103,7 +103,7 @@ namespace ToMainApi.Services
             if (!deleteImageResult.Success)
                 _logger.LogWarning("Не удалось удалить старую картинку: {Url}", existPhotoData.Data.Url);
 
-            return new ServiceResponse<bool> { Success = true, Data = true };
+            return new ServiceResponse<bool> { Success = true, Data = true, Message = ResponseMessages.Success };
         }
          
         public async Task<ServiceResponse<ApplicationPhotoDto>> ChangeApplicationPhotoUrl(ChangeApplicationPhotoUrlDto model)
@@ -127,15 +127,15 @@ namespace ToMainApi.Services
                             VehiclePhotoType = existApplicationPhoto.VehiclePhotoType
                         },
                         Success = true,
-                        Message = "Ссылка на фотографию успешно изменена"
+                        Message = ResponseMessages.Success
                     };
                 }
-                return new ServiceResponse<ApplicationPhotoDto>() { Data = null, Success = false };
+                return new ServiceResponse<ApplicationPhotoDto>() { Data = null, Success = false, Message = "Фото не найдено" };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Произошла ошибка при попытке изменить фотографию");
-                return new ServiceResponse<ApplicationPhotoDto>() { Data = null, Success = false};
+                return new ServiceResponse<ApplicationPhotoDto>() { Data = null, Success = false, Message = ResponseMessages.Error };
             }
         }
     }

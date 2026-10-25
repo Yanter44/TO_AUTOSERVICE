@@ -8,6 +8,5 @@
         public string CloudName { get; set; }
         public string Folder { get; set; }
         public string UploadPreset { get; set; }
-        public long MaxFileSize { get; set; }
     }
 }

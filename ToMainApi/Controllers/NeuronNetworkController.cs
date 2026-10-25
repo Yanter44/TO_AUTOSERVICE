@@ -142,8 +142,8 @@ namespace ToMainApi.Controllers
         {
             var result = await _applicationPhotoService.ConfirmGeneratedPhoto(model);
             if (result.Success)
-                return Ok();
-            return BadRequest();
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

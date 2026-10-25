@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using ToMainApi.Common;
 using ToMainApi.DbContext;
 using ToMainApi.Interfaces;
@@ -14,9 +15,16 @@ namespace ToMainApi.Services
     public class PtoService : IPtoService
     {
         private readonly AppDbContext _dbcontext;
-        public PtoService(AppDbContext dbcontext)
+        private readonly IInfisicalService _infisicalService;
+        private readonly IArchiveCryptoService _archiveCrypto;
+        public PtoService(
+         AppDbContext dbcontext,
+         IInfisicalService infisicalService,
+         IArchiveCryptoService archiveCrypto)
         {
             _dbcontext = dbcontext;
+            _infisicalService = infisicalService;
+            _archiveCrypto = archiveCrypto;
         }
         public async Task<ServiceResponse<List<PtoResponseDto>>> GetAllPtos()
         {
@@ -36,7 +44,7 @@ namespace ToMainApi.Services
 
                 PricePolicies = x.PricePolicies.Select(p => new PtoPricePolicyDto
                 {
-                    VehicleCategoryId = p.VehicleCategoryId,
+                    VehicleCategoriesBySrtsId = p.VehicleCategoryBySrtsId,
                     Price = p.Price
                 }).ToList()
             }).ToList();
@@ -52,6 +60,7 @@ namespace ToMainApi.Services
             var query = _dbcontext.Ptos
                 .AsNoTracking()
                 .Include(x => x.PricePolicies)
+                .Include(x => x.Experts)
                 .AsQueryable();
 
             var totalCount = await query.CountAsync();
@@ -69,9 +78,17 @@ namespace ToMainApi.Services
                 Address = x.Address,
                 Latitude = x.Latitude,
                 Longitude = x.Longitude,
+                PtoExperts = x.Experts.Select(e => new PtoExpertDto
+                {
+                    Id = e.Id,
+                    FirstName = e.FirstName,
+                    MiddleName = e.MiddleName,
+                    LastName = e.LastName,
+                    SequenceNumber = e.SequenceNumber,
+                }).ToList(),
                 PricePolicies = x.PricePolicies.Select(p => new PtoPricePolicyDto
                 {
-                    VehicleCategoryId = p.VehicleCategoryId,
+                    VehicleCategoriesBySrtsId = p.VehicleCategoryBySrtsId,
                     Price = p.Price
                 }).ToList()
             }).ToList();
@@ -89,29 +106,68 @@ namespace ToMainApi.Services
                 }
             };
         }
+
         public async Task<ServiceResponse<bool>> AddNewPto(AddNewPtoDto model)
         {
-            var pto = new Pto
+            var masterKeyBase64 = await _infisicalService.GetSecretAsync("CRYPTO_MASTER_KEY");
+            var masterKey = Convert.FromBase64String(masterKeyBase64);
+            try
             {
-                Name = model.Name,
-                RsaNumber = model.RsaNumber,
-                Address = model.Address,
-                Latitude = model.Latitude,
-                Longitude = model.Longitude,
-                Login = model.Login,
-                Password = model.Password,
-                ApiKey = model.ApiKey,
-
-                PricePolicies = model.PricePolicies.Select(x => new PtoPricePolicy
+                var operatorEncrypted = await _archiveCrypto.EncryptAsync(model.OperatorKeyArchive, masterKey);
+                var expertEncryptedList = new List<byte[]>();
+                foreach (var expert in model.Experts)
                 {
-                    VehicleCategoryId = x.VehicleCategoryId,
-                    Price = x.Price
-                }).ToList()
-            };
-            _dbcontext.Ptos.Add(pto);
-            await _dbcontext.SaveChangesAsync();
-            return new ServiceResponse<bool>() { Success = true };
+                    if (expert.KeyArchive is null || expert.KeyArchive.Length == 0)
+                        return new ServiceResponse<bool> { Success = false, Message = $"У эксперта {expert.LastName} нет ключа" };
+
+                    expertEncryptedList.Add(await _archiveCrypto.EncryptAsync(expert.KeyArchive, masterKey));
+                }
+
+                var pto = new Pto
+                {
+                    Name = model.Name,
+                    RsaNumber = model.RsaNumber,
+                    Address = model.Address,
+                    Latitude = model.Latitude,
+                    Longitude = model.Longitude,
+
+                    OperatorCryptoKey = new PtoOperatorCryptoKey
+                    {
+                        EncryptedData = operatorEncrypted,
+                        CreatedAt = DateTime.UtcNow,
+                    },
+
+                    Experts = model.Experts.Select((dto, i) => new PtoExpert
+                    {
+                        FirstName = dto.FirstName,
+                        LastName = dto.LastName,
+                        MiddleName = dto.MiddleName,
+                        SequenceNumber = int.Parse(dto.SequenceNumber),
+                        CryptoKey = new PtoExpertCryptoKey
+                        {
+                            EncryptedData = expertEncryptedList[i],
+                            CreatedAt = DateTime.UtcNow,
+                        },
+                    }).ToList(),
+
+                    PricePolicies = model.PricePolicies.Select(x => new PtoPricePolicy
+                    {
+                        VehicleCategoryBySrtsId = x.VehicleCategoriesBySrtsId,
+                        Price = x.Price,
+                    }).ToList(),
+                };
+
+                _dbcontext.Ptos.Add(pto);
+                await _dbcontext.SaveChangesAsync();
+
+                return new ServiceResponse<bool> { Success = true };
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(masterKey);
+            }
         }
+        
         public async Task<ServiceResponse<bool>> DeletePtoAsync(int ptoId)
         {
             var pto = await _dbcontext.Ptos.FindAsync(ptoId);
@@ -135,7 +191,7 @@ namespace ToMainApi.Services
                     .SetProperty(a => a.Status, ApplicationStatus.Error.ToString()));
 
             await _dbcontext.SaveChangesAsync();
-            return new ServiceResponse<bool> { Data = true, Success = true };
+            return new ServiceResponse<bool> { Data = true, Success = true, Message = ResponseMessages.Success };
         }
         public async Task<ServiceResponse<bool>> UpdatePto(UpdatePtoRequestDto model)
         {
@@ -145,20 +201,17 @@ namespace ToMainApi.Services
 
             if (pto == null)
             {
-                return new ServiceResponse<bool> { Success = false };
+                return new ServiceResponse<bool> { Success = false, Message = "ПТО не найдено" };
             }
             pto.Name = model.Name;
             pto.RsaNumber = model.RsaNumber;
             pto.Address = model.Address;
             pto.Latitude = model.Latitude;
             pto.Longitude = model.Longitude;
-            pto.Login = model.Login;
-            pto.Password = model.Password;
-            pto.ApiKey = model.ApiKey;
             _dbcontext.PtoPolicies.RemoveRange(pto.PricePolicies);
             pto.PricePolicies = model.PricePolicies.Select(x => new PtoPricePolicy
             {
-                VehicleCategoryId = x.VehicleCategoryId,
+                VehicleCategoryBySrtsId = x.VehicleCategoriesBySrtsId,
                 Price = x.Price
             }).ToList();
             await _dbcontext.SaveChangesAsync();

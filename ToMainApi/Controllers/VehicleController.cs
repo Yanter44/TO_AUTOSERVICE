@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ToMainApi.Interfaces;
 using ToMainApi.Models.Dtos.Vehicle;
+using ToMainApi.Models.Enums;
 
 namespace ToMainApi.Controllers
 {
@@ -15,15 +16,20 @@ namespace ToMainApi.Controllers
             _vehicleService = vehicleService;
         }
         [Authorize]
-        [HttpGet("GetAllVehicleCategories")]
-        public async Task<IActionResult> GetAllVehicleCategories()
+        [HttpGet("GetAllVehicleCategoriesBySrts")]
+        public async Task<IActionResult> GetAllVehicleCategoriesBySrts()
         {
-           var result = await _vehicleService.GetAllVehicleCategories();
-           if (result.Success)
-               return Ok(result);
-
-           return BadRequest();
+            var result = await _vehicleService.GetAllVehicleCategories(VehicleCategoryType.SRTS);
+            return result.Success ? Ok(result) : BadRequest(result);
         }
+        [Authorize]
+        [HttpGet("GetAllVehicleCategoriesByOkp")]
+        public async Task<IActionResult> GetAllVehicleCategoriesByOkp()
+        {
+            var result = await _vehicleService.GetAllVehicleCategories(VehicleCategoryType.OKP);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         [Authorize]
         [HttpPost("AddNewVehicleCategory")]
         public async Task<IActionResult> AddNewVehicleCategory([FromBody] AddNewVehicleCategoryDto model)
@@ -33,6 +39,7 @@ namespace ToMainApi.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+
         [Authorize]
         [HttpDelete("DeleteVehicleCategory")]
         public async Task<IActionResult> DeleteVehicleCategory([FromBody] DeleteVehicleCategoryDto model)
@@ -42,6 +49,7 @@ namespace ToMainApi.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+
         [Authorize]
         [HttpPut("UpdateVehicleCategory")]
         public async Task<IActionResult> UpdateVehicleCategory([FromBody] UpdateVehicleCategoryDto model)

@@ -9,6 +9,7 @@ namespace ToMainApi.Interfaces
     public interface IAuthService
     {
         Task<User> CheckUsers(LoginDto model);
+        Task<UserBlockInfoDto> GetActiveBlockAsync(int userId);
         Task<ServiceResponse<string>> CreateAccessToken(UserDto userdtomodel);
         Task<ServiceResponse<int>> CheckRefreshToken(string token);
         Task<ServiceResponse<AccessAndRefreshTokenModel>> LoginUser(User usermodel);

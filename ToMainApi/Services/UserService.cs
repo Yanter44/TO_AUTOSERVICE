@@ -103,7 +103,7 @@ namespace ToMainApi.Services
                     Success = true
                 };
             }
-            return new ServiceResponse<UserDto>() { Success = false, Message = "Пользователь не найден :("};
+            return new ServiceResponse<UserDto>() { Success = false, Message = "Пользователь не найден" };
         }
 
         public async Task<ServiceResponse<List<UserDto>>> GetAllUsers()
@@ -400,7 +400,7 @@ namespace ToMainApi.Services
             wallet.DebtLimit = model.DebtLimit;
             await _dbcontext.SaveChangesAsync();
 
-            return new ServiceResponse<bool> { Success = true, Data = true };
+            return new ServiceResponse<bool> { Success = true, Message = ResponseMessages.Success};
         }
        
       

@@ -1,7 +1,9 @@
-﻿namespace ToMainApi.Interfaces
+﻿using ToMainApi.Common;
+
+namespace ToMainApi.Interfaces
 {
     public interface IimageTextOverlayService
     {
-        Task<string> AddText(Stream photo, string text);
+        Task<ServiceResponse<MemoryStream>> AddText(Stream photo, IReadOnlyList<string> lines);
     }
 }
