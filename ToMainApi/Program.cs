@@ -22,8 +22,8 @@ using ToMainApi.Services.Cache;
 using ToMainApi.Services.Crypt;
 using ToMainApi.Services.Mail;
 using ToMainApi.Services.Notifications;
-using Shared.ApplicationContracts;
-using ToMainApi.Services.RabbitMq.Consumers;
+//using Shared.ApplicationContracts;
+//using ToMainApi.Services.RabbitMq.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 var culture = CultureInfo.InvariantCulture;
