@@ -73,7 +73,7 @@ namespace ToMainApi.Models.Entities
         public Pto Pto { get; set; }
 
 
-        public int SelectedTechnicalExpertToReviewApplicationId { get; set; }
+    //    public int SelectedTechnicalExpertToReviewApplicationId { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Status { get; set; }
         public string? RejectReason { get; set; }
